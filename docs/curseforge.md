@@ -14,7 +14,8 @@ An AE2-flavoured multiplication machine for crystal production lines. Instead of
 
 - **No material cost** — the crystal in the seed slot is only used as a recipe key and is never consumed.
 - **FE only** — no water, no gas, no other fluids. Works fine on Mekanism cables and energy cubes.
-- **Native Mekanism upgrades** — the upgrade slots accept standard Mekanism upgrade cards.
+- **A real Mekanism machine** — built on `BlockTile` / `TileEntityMekanism` and opening Mekanism's own GUI, including the
+  upgrade window, side configuration, energy tab and redstone tab. Upgrade cards go through the official `Upgrade` API.
 - **Four machine tiers** — higher tiers are faster, hold more energy and have more slots.
 - **One crystal type per machine at a time** — vanilla-like behaviour, no hidden limits.
 
@@ -22,14 +23,14 @@ An AE2-flavoured multiplication machine for crystal production lines. Instead of
 
 ## Machine tiers
 
-| Tier | Speed | Energy buffer | Max input | Output slots | Upgrade slots | Seed stack limit | Output stack limit |
+| Tier | Speed | Energy buffer | Max input | Output slots | Upgrade cards | Seed stack limit | Output stack limit |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Basic | 1x | 200,000 FE | 20,000 FE/t | 3 | 4 | 64 | 64 |
-| Advanced | 2x | 800,000 FE | 80,000 FE/t | 6 | 6 | 128 | 128 |
-| Elite | 4x | 3,200,000 FE | 320,000 FE/t | 9 | 8 | 256 | 256 |
-| Ultimate | 8x | 12,800,000 FE | 1,280,000 FE/t | 12 | 10 | 512 | 512 |
+| Basic | 1x | 200,000 FE | 20,000 FE/t | 3 | 8 speed + 8 energy | 64 | 64 |
+| Advanced | 2x | 800,000 FE | 80,000 FE/t | 6 | 8 speed + 8 energy | 128 | 128 |
+| Elite | 4x | 3,200,000 FE | 320,000 FE/t | 9 | 8 speed + 8 energy | 256 | 256 |
+| Ultimate | 8x | 12,800,000 FE | 1,280,000 FE/t | 12 | 8 speed + 8 energy | 512 | 512 |
 
-Tiers change speed, energy handling, slot counts and stack limits. Every tier still multiplies only one crystal type at a time.
+Tiers change speed, energy handling, output slot counts and stack limits; the upgrade window comes from Mekanism itself, so every tier accepts 8 speed and 8 energy cards. Every tier still multiplies only one crystal type at a time.
 1.20.1 stores item counts in a signed byte (127 max), so any capacity above 127 is implemented as **visible stack (up to 127) + hidden overflow counter**:
 a slot holding 300 crystals shows 127 on the icon, prints the real amount in the slot corner and shows "Stored: 300 / 512" on hover. Nothing is lost or truncated.
 
@@ -41,7 +42,7 @@ a slot holding 300 crystals shows 127 on the icon, prints the real amount in the
 2. **Parallel lanes = seed count / 16** — 16 crystals = 1 lane, 32 = 2 lanes, 64 = 4 lanes.
 3. Output *and* energy draw scale with the lane count, so the **FE cost per crystal stays the same** — more seeds simply means more production lines.
 4. Seeds are **never consumed**. The machine only stalls when the output slots are full.
-5. Seed slot capacity comes from the tier (64 / 128 / 256 / 512) and gains **+16 per inserted upgrade card** (global ceiling `seedSlotCapCeiling`, 1024 by default).
+5. Seed slot capacity comes from the tier (64 / 128 / 256 / 512) and gains **+16 per inserted speed or energy card** (global ceiling `seedSlotCapCeiling`, 1024 by default).
 6. Seed and output stacks may exceed 127, so a fully loaded Ultimate machine holds 512 seeds = **32 parallel lanes**.
 7. Everything above 127 lives in a hidden overflow counter: shift-click whole stacks, hoppers or pipes to fill a slot completely; extraction gives at most one stack (<=127) at a time.
 
@@ -49,16 +50,14 @@ a slot holding 300 crystals shows 127 on the icon, prints the real amount in the
 
 ## Upgrade cards
 
+The upgrade window is Mekanism's own (not a hand-drawn slot). This machine only supports two card types, up to **8 of each**:
+
 | Card | Effect |
 | --- | --- |
-| `mekanism:upgrade_speed` | **Faster processing**, exactly like Mekanism. Each card **halves the batch time** (stacking: 2 cards = 4x speed, 3 cards = 8x). FE per tick rises by the same factor, so FE per crystal is unchanged. |
-| `mekanism:upgrade_energy` | **Cheaper processing**, exactly like Mekanism. Each card **halves the energy per operation** (2 cards = 1/4 cost) and **never touches any energy buffer** (the buffer is tier-only). |
-| Any upgrade card | **+16 seed slot capacity** each, so more cards means more crystals and more lanes. |
-| Others (muffling, gas, filter, anchor) | Accepted, they just do not affect multiplication. |
-
-Cards are recognised through Mekanisms official API (`mekanism.api.Upgrade` plus `IUpgradeItem`), the ids are identical to Mekanisms own cards
-and the per-kind limit is taken straight from `Upgrade#getMax()` (8 for speed and energy). Cards stack inside a single upgrade slot just like in a Mekanism machine:
-2 speed cards in one slot behave exactly like 1 card in each of two slots and anything above the limit is refused.
+| `mekanism:upgrade_speed` | **Overclock.** 8 cards cut the batch time to 1/10 but raise the draw per tick to 100x, so the FE cost per crystal goes up (about 1.33x with one card, 10x with eight). |
+| `mekanism:upgrade_energy` | **Cheaper processing.** 8 cards cut the draw per tick to 1/10 and **never touch the energy buffer** (the buffer is tier-only). 8 speed + 8 energy lands exactly back at the base cost. |
+| Speed / energy card | Every card also adds **+16 seed slot capacity**, i.e. more crystals and more lanes. |
+| Others (muffling, gas, filter, anchor) | **Refused** by the upgrade window. |
 
 The maths is Mekanism's own (the `MekanismUtils#getTicks` / `#getEnergyPerTick` formulas from Mekanism 10), with Mekanism's
 `maxUpgradeMultiplier` config value (default 10) as the base - this mod exposes the same key under the same name:
@@ -130,7 +129,7 @@ Note: ExtendedAE for 1.20.1 (modid `expatternprovider`) does not ship `entro_cry
 | Key | Default | Meaning |
 | --- | --- | --- |
 | `crystalsPerParallel` | 16 | Crystals required per parallel lane |
-| `seedCapacityPerUpgrade` | 16 | Capacity added per upgrade card (base capacity is tier-driven) |
+| `seedCapacityPerUpgrade` | 16 | Capacity added per speed / energy card (base capacity is tier-driven) |
 | `seedSlotCapCeiling` | 1024 | Ceiling for seed slot capacity (was `maxSeedCapacity` in 1.1.0) |
 | `maxParallel` | 64 | Parallel lane cap per machine |
 | `baseSpeedMultiplier` | 4.0 | Global base speed multiplier (raises FE/t, total cost stays the same) |
@@ -158,29 +157,39 @@ names and descriptions, and all values are re-read at runtime so a change applie
 Ultimate tier with the same 64 seeds: 8 items every 0.3 s (6 ticks) at 12,800 FE/t, 9,600 FE per crystal;
 adding 8 speed cards makes it one batch per tick at 1,280,000 FE/t (160,000 FE per crystal - pure overclock).
 
-Ultimate tier fully loaded with 512 seeds = 32 lanes: 64 items every 0.3 s at 102,400 FE/t (measured in-game).
+Ultimate tier fully loaded with 512 seeds = 32 lanes: 64 items every 0.3 s at 102,400 FE/t (by these formulas).
 
 ---
 
 ## GUI
 
-The screen is drawn in Mekanism's machine style: light steel frame, dark grey body, inset slots, a tick-marked energy gauge and a filling progress arrow.
-The palette and slot/gauge textures were sampled directly from Mekanism's own GUI assets.
-Hover the gauge for energy / capacity / draw per tick, hover the arrow for progress, duration, lanes, items per batch and the number of upgrade cards.
-Slots holding more than 127 items print the real amount in the bottom-right corner.
-Slot layout: seed (28,24), outputs from (84,18) in 4 columns, upgrades from (26,76) in 5 columns, player inventory (8,118), hotbar (8,176).
-**Shift click** moves a whole seed stack (including the hidden overflow above 127) and empties output slots completely in one go.
+The screen is **Mekanism's own machine GUI** (`GuiConfigurableTile`): frame, slots, title, upgrade window, side configuration,
+energy tab and redstone tab all come from Mekanism. This mod only adds the vertical energy bar, the progress arrow and the
+real-amount overlay on slots.
+
+- **Upgrade window**: click the upgrade card icon in the top right; 8 speed and 8 energy cards, just drag them in.
+- **Side configuration**: click the side config icon to set each face to input, output or disabled for items and energy; output slots eject by default.
+- **Energy tab** shows stored / capacity / draw per tick. **Redstone tab** offers ignore / high / low / pulse.
+- Layout: GUI 176x166, seed slot (26,40), progress arrow (52,45) 32x8, output slots in 4 columns x 3 rows (x = 88/106/124/142, y = 20/38/56),
+  energy bar (164,15), player inventory (8,84), hotbar (8,142).
+- Slots holding more than 127 items print the real amount in the bottom-right corner and show "Seed: stored / capacity" or "Stored: stored / capacity" on hover.
+- **Shift click** moves a whole seed stack (including the hidden overflow above 127) and empties an output slot completely in one go.
 
 ### JEI
 
 With JEI installed a "Crystal Multiplication" category lists every recipe: seed on the left (marked as not consumed, with how many crystals make one lane),
 the output on the right, and the energy per tick plus the batch time in the middle. All four tiers are catalysts for the category, and clicking the
-progress arrow inside the machine opens the matching recipe.
+progress arrow inside the machine (52,45,32,8) opens the matching recipe.
 
 ---
 
 ## Changelog
 
+- **1.5.0** — The machine is a real Mekanism machine now: blocks use `BlockTile` + `BlockTileBuilder`, the block entity extends
+  `TileEntityMekanism`, and the screen is Mekanism's `GuiConfigurableTile` with its upgrade window, side configuration, energy tab
+  and redstone tab; only speed and energy cards are accepted. The hand-drawn GUI textures were removed and block textures reverted
+  to the 1.0.0 Mek grey-steel look (only minor per-tier recolouring). GUI slot and player inventory positions fixed; shift clicking an
+  output slot now empties the whole slot including hidden overflow.
 - **1.4.0** — Upgrades and crafting follow Mekanisms official conventions now. The upgrade maths is Mekanism's own
   (batch time x multiplier ^ (-fraction_speed), FE per tick x multiplier ^ (2 * fraction_speed - fraction_energy),
   fraction = installed / `Upgrade#getMax()`), with Mekanism's `maxUpgradeMultiplier` (default 10) as the base; the old
@@ -207,7 +216,7 @@ progress arrow inside the machine opens the matching recipe.
 - **Can I multiply several crystal types at once?** No — one stack, one crystal type. Stack more of it to add lanes.
 - **Will addons that change output speed conflict?** No. Speed and yield are computed entirely inside this mod and never read modified values from other mods.
 - **Automatable?** Yes. Output slots can be extracted with hoppers or pipes; the seed slot accepts input and never loses its contents.
-- **How do upgrade cards stack?** Multiplicatively. Speed cards: 2 cards = 4x faster. Energy cards: 2 cards = 1/4 energy. Caps at 4096x, adjustable in the config.
+- **How do upgrade cards stack?** With Mekanism's own curve: effect = `maxUpgradeMultiplier` ^ (installed / 8). With the default 10, 8 speed cards give 10x speed at 100x the draw per tick, 8 energy cards give 1/10 the draw, and 8 + 8 lands back at the base cost.
 - **Why does the slot show 127 when the tooltip says 512?** Minecraft 1.20.1 cannot store more than 127 items in one stack, so the rest is kept in a hidden overflow counter and printed in the slot corner. The machine counts the real total.
 
 ---

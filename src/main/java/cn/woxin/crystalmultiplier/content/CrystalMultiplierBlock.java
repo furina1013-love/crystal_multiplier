@@ -1,58 +1,34 @@
 package cn.woxin.crystalmultiplier.content;
 
-import cn.woxin.crystalmultiplier.menu.CrystalMultiplierMenu;
+import mekanism.api.Action;
+import mekanism.api.AutomationType;
+import mekanism.api.Upgrade;
+import mekanism.common.block.prefab.BlockTile;
+import mekanism.common.content.blocktype.BlockTypeTile;
+import mekanism.common.registries.MekanismItems;
 import net.minecraft.core.BlockPos;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.core.Direction;
-import net.minecraft.network.chat.Component;
-import net.minecraft.world.InteractionHand;
-import net.minecraft.world.InteractionResult;
-import net.minecraft.world.MenuProvider;
-import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.BaseEntityBlock;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.Mirror;
-import net.minecraft.world.level.block.RenderShape;
-import net.minecraft.world.level.block.Rotation;
-import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.level.block.entity.BlockEntityTicker;
-import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.block.state.StateDefinition;
-import net.minecraft.world.level.block.state.properties.BlockStateProperties;
-import net.minecraft.world.level.block.state.properties.BooleanProperty;
-import net.minecraft.world.level.block.state.properties.DirectionProperty;
-import net.minecraft.world.phys.BlockHitResult;
-import net.minecraftforge.network.NetworkHooks;
-
-import javax.annotation.Nullable;
+import net.minecraft.world.level.material.MapColor;
 
 /**
- * A Mekanism styled crystal multiplying machine block.
- * One block class is shared by every tier; the tier is a property of the block instance.
+ * The four crystal multiplier tiers share one block class; only the {@link CrystalTier} and the
+ * block type (energy buffer, GUI, upgrades, side configuration) differ.
  */
-public class CrystalMultiplierBlock extends BaseEntityBlock {
-
-    public static final DirectionProperty FACING = BlockStateProperties.HORIZONTAL_FACING;
-    public static final BooleanProperty ACTIVE = BooleanProperty.create("active");
+public class CrystalMultiplierBlock extends BlockTile<CrystalMultiplierBlockEntity, BlockTypeTile<CrystalMultiplierBlockEntity>> {
 
     private final CrystalTier tier;
 
-    public CrystalMultiplierBlock(Properties properties) {
-        this(properties, CrystalTier.BASIC);
-    }
-
-    public CrystalMultiplierBlock(Properties properties, CrystalTier tier) {
-        super(properties);
+    public CrystalMultiplierBlock(BlockTypeTile<CrystalMultiplierBlockEntity> type, CrystalTier tier) {
+        super(type, properties -> properties
+                .mapColor(MapColor.METAL)
+                .strength(3.5F, 6.0F)
+                .sound(SoundType.METAL)
+                .requiresCorrectToolForDrops());
         this.tier = tier;
-        this.registerDefaultState(this.stateDefinition.any()
-                .setValue(FACING, Direction.NORTH)
-                .setValue(ACTIVE, Boolean.FALSE));
     }
 
     public CrystalTier getTier() {
@@ -60,81 +36,60 @@ public class CrystalMultiplierBlock extends BaseEntityBlock {
     }
 
     @Override
-    protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(FACING, ACTIVE);
-    }
-
-    @Override
-    public RenderShape getRenderShape(BlockState state) {
-        return RenderShape.MODEL;
-    }
-
-    @Nullable
-    @Override
-    public BlockState getStateForPlacement(BlockPlaceContext context) {
-        return this.defaultBlockState().setValue(FACING, context.getHorizontalDirection().getOpposite());
-    }
-
-    @Override
-    public BlockState rotate(BlockState state, Rotation rotation) {
-        return state.setValue(FACING, rotation.rotate(state.getValue(FACING)));
-    }
-
-    @Override
-    public BlockState mirror(BlockState state, Mirror mirror) {
-        return state.rotate(mirror.getRotation(state.getValue(FACING)));
-    }
-
-    @Nullable
-    @Override
-    public BlockEntity newBlockEntity(BlockPos pos, BlockState state) {
-        return new CrystalMultiplierBlockEntity(pos, state);
-    }
-
-    @Nullable
-    @Override
-    public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> type) {
-        if (level.isClientSide) {
-            return null;
-        }
-        return createTickerHelper(type, cn.woxin.crystalmultiplier.CrystalMultiplierMod.MULTIPLIER_BE.get(),
-                CrystalMultiplierBlockEntity::serverTick);
-    }
-
-    @Override
     public void playerWillDestroy(Level level, BlockPos pos, BlockState state, Player player) {
         if (!level.isClientSide) {
-            BlockEntity blockEntity = level.getBlockEntity(pos);
-            if (blockEntity instanceof CrystalMultiplierBlockEntity machine) {
-                CrystalMultiplierBlockEntity.MachineInventory inventory = machine.getInventory();
-                for (int slot = 0; slot < inventory.getSlots(); slot++) {
-                    ItemStack stack = inventory.getStackInSlot(slot);
-                    if (!stack.isEmpty()) {
-                        popResource(level, pos, stack.copy());
-                        inventory.setStackInSlot(slot, ItemStack.EMPTY);
+            if (level.getBlockEntity(pos) instanceof CrystalMultiplierBlockEntity machine) {
+                // Drop everything that is stored in the machine slots, including the hidden overflow.
+                for (CrystalSlot slot : machine.getMachineSlots()) {
+                    ItemStack prototype = slot.getStack();
+                    while (!prototype.isEmpty() && slot.getStoredCount() > 0) {
+                        int maxStack = Math.max(1, prototype.getMaxStackSize());
+                        int amount = Math.min(slot.getStoredCount(), maxStack);
+                        ItemStack extracted = slot.extractItem(amount, Action.EXECUTE, AutomationType.MANUAL);
+                        if (extracted.isEmpty()) {
+                            break;
+                        }
+                        popResource(level, pos, extracted);
                     }
+                }
+                // Installed Mekanism upgrades are kept in a virtual slot, so they have to be dropped by hand.
+                var upgradeComponent = machine.getComponent();
+                if (upgradeComponent != null) {
+                    dropUpgrades(level, pos, upgradeComponent);
                 }
             }
         }
         super.playerWillDestroy(level, pos, state, player);
     }
 
-    @Override
-    public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player,
-                                 InteractionHand hand, BlockHitResult hit) {
-        if (!level.isClientSide) {
-            BlockEntity blockEntity = level.getBlockEntity(pos);
-            if (blockEntity instanceof CrystalMultiplierBlockEntity multiplier) {
-                MenuProvider provider = new SimpleMenuProvider(
-                        (containerId, inventory, p) -> new CrystalMultiplierMenu(containerId, inventory, multiplier),
-                        Component.translatable("container.crystal_multiplier.crystal_multiplier"));
-                if (player instanceof ServerPlayer serverPlayer) {
-                    // NetworkHooks.openScreen writes the BlockPos into the packet,
-                    // which the client menu constructor reads back with readBlockPos().
-                    NetworkHooks.openScreen(serverPlayer, provider, pos);
+    private static void dropUpgrades(Level level, BlockPos pos, mekanism.common.tile.component.TileComponentUpgrade component) {
+        for (Upgrade type : new Upgrade[]{Upgrade.SPEED, Upgrade.ENERGY}) {
+            int count = component.getUpgrades(type);
+            while (count > 0) {
+                int amount = Math.min(count, Math.max(1, upgradeStack(type, 1).getMaxStackSize()));
+                ItemStack stack = upgradeStack(type, amount);
+                if (stack.isEmpty()) {
+                    break;
                 }
+                popResource(level, pos, stack);
+                count -= amount;
             }
         }
-        return InteractionResult.sidedSuccess(level.isClientSide);
+        // Cards that are still waiting in the upgrade input slot are not counted as installed yet.
+        for (ItemStack stack : new ItemStack[]{component.getUpgradeSlot().getStack(), component.getUpgradeOutputSlot().getStack()}) {
+            if (!stack.isEmpty()) {
+                popResource(level, pos, stack.copy());
+            }
+        }
+        component.getUpgradeSlot().setEmpty();
+        component.getUpgradeOutputSlot().setEmpty();
+    }
+
+    private static ItemStack upgradeStack(Upgrade type, int count) {
+        return switch (type) {
+            case SPEED -> MekanismItems.SPEED_UPGRADE.getItemStack(count);
+            case ENERGY -> MekanismItems.ENERGY_UPGRADE.getItemStack(count);
+            default -> ItemStack.EMPTY;
+        };
     }
 }
