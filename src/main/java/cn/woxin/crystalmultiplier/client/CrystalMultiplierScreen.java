@@ -36,8 +36,8 @@ public class CrystalMultiplierScreen extends AbstractContainerScreen<CrystalMult
     private static final int BAR_Y = 33;
     private static final int BAR_W = 26;
     private static final int BAR_H = 16;
-    private static final int STATUS_X = 8;
-    private static final int STATUS_Y = 53;
+    private static final int STATUS_X = 26;
+    private static final int STATUS_Y = 57;
     private static final int STATUS_ERROR = 0xFFFF5555;
 
     private final CrystalTier tier;
@@ -60,7 +60,9 @@ public class CrystalMultiplierScreen extends AbstractContainerScreen<CrystalMult
         int x = this.leftPos;
         int y = this.topPos;
 
-        graphics.drawString(this.font, this.tier.getDisplayName(), x + 8, y + 5, this.tier.getTintColor(), false);
+        Component tierName = this.tier.getDisplayName();
+        graphics.drawString(this.font, tierName, x + this.imageWidth - 8 - this.font.width(tierName), y + 5,
+                this.tier.getTintColor(), false);
 
         int per = this.menu.getCrystalsPerParallel();
         if (this.menu.isSeedValid()) {
@@ -94,6 +96,7 @@ public class CrystalMultiplierScreen extends AbstractContainerScreen<CrystalMult
             lines.add(Component.translatable("gui.crystal_multiplier.time",
                     String.format(java.util.Locale.ROOT, "%.1f", this.menu.getTicksRequired() / 20.0D)));
             lines.add(Component.translatable("gui.crystal_multiplier.parallel", this.menu.getParallelism()));
+            lines.add(Component.translatable("gui.crystal_multiplier.batch", this.menu.getItemsPerBatch()));
             if (this.menu.isActive()) {
                 lines.add(Component.translatable("gui.crystal_multiplier.active"));
             } else {

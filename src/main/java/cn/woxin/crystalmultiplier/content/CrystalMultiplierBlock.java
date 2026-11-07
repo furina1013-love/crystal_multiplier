@@ -10,6 +10,7 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.BaseEntityBlock;
@@ -98,6 +99,24 @@ public class CrystalMultiplierBlock extends BaseEntityBlock {
         }
         return createTickerHelper(type, cn.woxin.crystalmultiplier.CrystalMultiplierMod.MULTIPLIER_BE.get(),
                 CrystalMultiplierBlockEntity::serverTick);
+    }
+
+    @Override
+    public void playerWillDestroy(Level level, BlockPos pos, BlockState state, Player player) {
+        if (!level.isClientSide) {
+            BlockEntity blockEntity = level.getBlockEntity(pos);
+            if (blockEntity instanceof CrystalMultiplierBlockEntity machine) {
+                CrystalMultiplierBlockEntity.MachineInventory inventory = machine.getInventory();
+                for (int slot = 0; slot < inventory.getSlots(); slot++) {
+                    ItemStack stack = inventory.getStackInSlot(slot);
+                    if (!stack.isEmpty()) {
+                        popResource(level, pos, stack.copy());
+                        inventory.setStackInSlot(slot, ItemStack.EMPTY);
+                    }
+                }
+            }
+        }
+        super.playerWillDestroy(level, pos, state, player);
     }
 
     @Override

@@ -41,7 +41,21 @@ A Mekanism-styled machine for non-recursive AE2 crystal multiplication.
     side="BOTH"
 
 [[dependencies.crystal_multiplier]]
-    modId="extendedae"
+    modId="expatternprovider"
+    mandatory=false
+    versionRange="[1,)"
+    ordering="AFTER"
+    side="BOTH"
+
+[[dependencies.crystal_multiplier]]
+    modId="appflux"
+    mandatory=false
+    versionRange="[1,)"
+    ordering="AFTER"
+    side="BOTH"
+
+[[dependencies.crystal_multiplier]]
+    modId="extendedae_plus"
     mandatory=false
     versionRange="[1,)"
     ordering="AFTER"

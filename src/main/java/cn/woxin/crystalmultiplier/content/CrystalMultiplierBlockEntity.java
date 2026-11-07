@@ -4,6 +4,10 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.game.ClientGamePacketListener;
+import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
+import net.minecraftforge.network.PacketDistributor;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.tags.TagKey;
@@ -68,6 +72,8 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
     private int perParallel = 16;
     private int itemsPerBatch;
     private boolean seedValid;
+    private int syncCooldown;
+    private int lastSyncedEnergy = -1;
 
     private final int[] syncedData = new int[DATA_COUNT];
 
@@ -274,6 +280,11 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
         return Math.max(1, per);
     }
 
+    /** How many items one finished batch produces right now (parallel lanes times speed cards). */
+    public int getItemsPerBatch() {
+        return this.itemsPerBatch;
+    }
+
     /** Seed slot capacity: base value plus the bonus of every inserted upgrade card. */
     public int getSeedCapacity() {
         int upgrades = 0;
@@ -289,6 +300,11 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
 
     public static int outputStackLimit() {
         return OUTPUT_STACK_LIMIT;
+    }
+
+    /** How many of this result fit into a single output slot. */
+    private static int limitFor(ItemStack stack) {
+        return Math.max(1, Math.min(OUTPUT_STACK_LIMIT, stack.getMaxStackSize()));
     }
 
     /* ------------------------------------------------------------------ upgrades */
@@ -419,6 +435,26 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
             this.level.setBlock(this.worldPosition, newState, Block.UPDATE_CLIENTS);
             this.setChanged();
         }
+
+        if (--this.syncCooldown <= 0) {
+            this.syncCooldown = 5;
+            this.syncToClients();
+        }
+    }
+
+    /** Pushes energy and friends to the clients, because a ContainerData slot is only a short. */
+    private void syncToClients() {
+        if (this.level == null || this.level.isClientSide) {
+            return;
+        }
+        if (!this.active && this.lastSyncedEnergy == this.energy) {
+            return;
+        }
+        this.lastSyncedEnergy = this.energy;
+        CompoundTag tag = this.makeSyncTag();
+        PacketDistributor.TRACKING_CHUNK
+                .with(() -> this.level.getChunkAt(this.worldPosition))
+                .send(ClientboundBlockEntityDataPacket.create(this, entity -> tag));
     }
 
     @Nullable
@@ -447,9 +483,9 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
         for (int slot = this.getOutputStart(); slot < this.getOutputEnd() && remaining > 0; slot++) {
             ItemStack existing = this.inventory.getStackInSlot(slot);
             if (existing.isEmpty()) {
-                remaining -= Math.min(OUTPUT_STACK_LIMIT, remaining);
+                remaining -= Math.min(limitFor(result), remaining);
             } else if (ItemStack.isSameItemSameTags(existing, result)) {
-                remaining -= Math.max(0, OUTPUT_STACK_LIMIT - existing.getCount());
+                remaining -= Math.max(0, limitFor(result) - existing.getCount());
             }
         }
         return remaining <= 0;
@@ -460,11 +496,11 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
         for (int slot = this.getOutputStart(); slot < this.getOutputEnd() && remaining > 0; slot++) {
             ItemStack existing = this.inventory.getStackInSlot(slot);
             if (existing.isEmpty()) {
-                int moved = Math.min(OUTPUT_STACK_LIMIT, remaining);
+                int moved = Math.min(limitFor(result), remaining);
                 this.inventory.setStackInSlot(slot, result.copyWithCount(moved));
                 remaining -= moved;
             } else if (ItemStack.isSameItemSameTags(existing, result)) {
-                int space = Math.max(0, OUTPUT_STACK_LIMIT - existing.getCount());
+                int space = Math.max(0, limitFor(result) - existing.getCount());
                 int moved = Math.min(space, remaining);
                 if (moved > 0) {
                     existing.grow(moved);
@@ -474,6 +510,49 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
             }
         }
         this.setChanged();
+    }
+
+    /* ------------------------------------------------------------------ syncing */
+
+    /**
+     * A ContainerData slot travels as a short, so energy (up to 128,000,000), the energy per tick
+     * and the batch size would be cut in half on the client. Those values therefore go through the
+     * block entity update packet instead of the menu data slots.
+     */
+    private CompoundTag makeSyncTag() {
+        CompoundTag tag = new CompoundTag();
+        tag.putInt("sync_energy", this.energy);
+        tag.putInt("sync_cost", this.energyPerTick);
+        tag.putInt("sync_batch", this.itemsPerBatch);
+        tag.putDouble("sync_progress", this.progress);
+        return tag;
+    }
+
+    private void readSyncTag(CompoundTag tag) {
+        if (tag.contains("sync_energy")) {
+            this.energy = tag.getInt("sync_energy");
+        }
+        if (tag.contains("sync_cost")) {
+            this.energyPerTick = tag.getInt("sync_cost");
+        }
+        if (tag.contains("sync_batch")) {
+            this.itemsPerBatch = tag.getInt("sync_batch");
+        }
+        if (tag.contains("sync_progress")) {
+            this.progress = tag.getDouble("sync_progress");
+        }
+    }
+
+    @Override
+    public CompoundTag getUpdateTag() {
+        return this.makeSyncTag();
+    }
+
+    @Override
+    public Packet<ClientGamePacketListener> getUpdatePacket() {
+        return ClientboundBlockEntityDataPacket.create(this, entity -> entity instanceof CrystalMultiplierBlockEntity machine
+                ? machine.makeSyncTag()
+                : new CompoundTag());
     }
 
     /* ------------------------------------------------------------------- saving */
@@ -494,6 +573,7 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
         }
         this.energy = tag.getInt("energy");
         this.progress = tag.getDouble("progress");
+        this.readSyncTag(tag);
     }
 
     @Override

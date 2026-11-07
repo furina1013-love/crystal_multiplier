@@ -101,7 +101,7 @@
 ```bash
 export JAVA_HOME=/path/to/jdk-17   # 需要 JDK 17
 ./gradlew build
-# 产物：build/libs/crystal_multiplier-1.0.0.jar
+# 产物：build/libs/crystal_multiplier-1.0.2.jar
 ```
 
 本模组不 import 任何 AE2 / Mekanism 类，全部通过注册名与物品标签访问，因此 `libs/` 目录可以为空（`build.gradle` 里预留了 `compileOnly fileTree(dir: 'libs')` 以便本地调试）。
@@ -110,11 +110,12 @@ export JAVA_HOME=/path/to/jdk-17   # 需要 JDK 17
 
 ## 兼容性说明
 
-- `mods.toml`：forge [47,)、minecraft [1.20.1,1.21)、ae2 [15,)、mekanism [10.4,) 为必需；extendedae / jei 可选。
+- `mods.toml`：forge [47,)、minecraft [1.20.1,1.21)、ae2 [15,)、mekanism [10.4,) 为必需；expatternprovider（ExtendedAE 1.20.1 的真实 modid）、appflux、extendedae_plus、jei 为可选软依赖。
 - JEI 分类未实现（可选功能，不影响机器运行）。
 - 方块模型复用 Mekanism 的 `mekanism:block/machine` 父模型（保证与 Mekanism 机器同款外形），贴图为本模组自绘，四档各有独立配色：基础=钢灰蓝、高级=翠绿、精英=紫、终极=赤红；正面水晶在运行时按 active 状态切换发光贴图。
 
 ## 更新记录
 
+- **1.0.2**：修复能量/容量/单 tick 耗能/每批数量在客户端显示错误（这些数值超过 32767，菜单数据槽只能传 short，改为走方块实体同步包）；修复精英/终极档第三行输出槽与升级槽重叠（界面高度 186 → 198）；修复标题与档位名重叠（档位名改为右对齐）；修复状态文字压在能量条上；进度条 tooltip 重新显示每批产量；破坏机器时掉落槽内物品（原先物品和能量直接消失）；输出槽改为按物品自身堆叠上限工作（不可堆叠物品不再被算到 64）；`mods.toml` 的可选依赖 `extendedae` 改为 1.20.1 的真实 modid `expatternprovider`，并补充 `appflux`、`extendedae_plus`。
 - **1.0.1**：修复右键机器打不开界面的问题（打开 GUI 时没有把机器坐标写进网络包，客户端解析失败）；四档机器改为各自配色的独立贴图。
 - **1.0.0**：首个版本，四档工厂 + 种子并行增殖 + Mekanism 升级卡 + 全局配置。

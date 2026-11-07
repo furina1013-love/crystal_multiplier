@@ -18,7 +18,7 @@ import cn.woxin.crystalmultiplier.content.CrystalTier;
 public class CrystalMultiplierMenu extends AbstractContainerMenu {
 
     public static final int GUI_WIDTH = 176;
-    public static final int GUI_HEIGHT = 186;
+    public static final int GUI_HEIGHT = 198;
 
     private static final int SEED_X = 44;
     private static final int SEED_Y = 35;
@@ -26,11 +26,11 @@ public class CrystalMultiplierMenu extends AbstractContainerMenu {
     private static final int OUTPUT_BASE_Y = 17;
     private static final int OUTPUT_COLUMNS = 4;
     private static final int UPGRADE_BASE_X = 26;
-    private static final int UPGRADE_BASE_Y = 64;
+    private static final int UPGRADE_BASE_Y = 74;
     private static final int UPGRADE_COLUMNS = 5;
     private static final int PLAYER_INV_X = 8;
-    private static final int PLAYER_INV_Y = 104;
-    private static final int HOTBAR_Y = 162;
+    private static final int PLAYER_INV_Y = 116;
+    private static final int HOTBAR_Y = 174;
 
     private final CrystalMultiplierBlockEntity blockEntity;
     private final ContainerData data;
@@ -121,11 +121,13 @@ public class CrystalMultiplierMenu extends AbstractContainerMenu {
     }
 
     public int getEnergy() {
-        return this.data.get(0);
+        // Big numbers (energy, capacity, cost per tick, batch size) are synced through the block entity
+        // update packet: a menu data slot is a short and would truncate them.
+        return this.blockEntity.getEnergy();
     }
 
     public int getEnergyCapacity() {
-        return this.data.get(1);
+        return this.blockEntity.getEnergyCapacity();
     }
 
     public int getTicksRequired() {
@@ -133,7 +135,7 @@ public class CrystalMultiplierMenu extends AbstractContainerMenu {
     }
 
     public int getEnergyPerTick() {
-        return this.data.get(4);
+        return this.blockEntity.getEnergyPerTick();
     }
 
     public boolean isActive() {
@@ -149,7 +151,7 @@ public class CrystalMultiplierMenu extends AbstractContainerMenu {
     }
 
     public int getItemsPerBatch() {
-        return this.data.get(10);
+        return this.blockEntity.getItemsPerBatch();
     }
 
     public int getCrystalsPerParallel() {
