@@ -56,6 +56,10 @@ a slot holding 300 crystals shows 127 on the icon, prints the real amount in the
 | Any upgrade card | **+16 seed slot capacity** each, so more cards means more crystals and more lanes. |
 | Others (muffling, gas, filter, anchor) | Accepted, they just do not affect multiplication. |
 
+Cards are recognised through Mekanisms official API (`mekanism.api.Upgrade` plus `IUpgradeItem`), the ids are identical to Mekanisms own cards
+and the per-kind limit is taken straight from `Upgrade#getMax()` (8 for speed and energy). Cards stack inside a single upgrade slot just like in a Mekanism machine:
+2 speed cards in one slot behave exactly like 1 card in each of two slots and anything above the limit is refused.
+
 In short: speed cards make the *same job faster* (higher draw per tick, same total cost), energy cards make it *cheaper*, and every card lets you *stack more seeds*.
 Both card types stack multiplicatively (up to 4096x) and both are configurable (default x2 per card).
 
@@ -119,6 +123,10 @@ Note: ExtendedAE for 1.20.1 (modid `expatternprovider`) does not ship `entro_cry
 | `energyUpgradeEfficiencyFactor` | 2.0 | Energy divisor per energy card (2.0 = half energy) |
 | `oneTickOutput` | false | Finish one batch every tick (cheat-level, off by default) |
 
+Every key carries translation keys (`crystal_multiplier.configuration.machine.<key>` plus a matching `.tooltip`, section title
+`crystal_multiplier.configuration.machine`), so config screen mods such as **Configured** and **Forge Config Screens** show localised
+names and descriptions, and all values are re-read at runtime so a change applies immediately.
+
 ---
 
 ## Example numbers (Basic tier, 64 Certus seeds = 4 lanes)
@@ -142,6 +150,8 @@ The screen is drawn in Mekanism's machine style: light steel frame, dark grey bo
 The palette and slot/gauge textures were sampled directly from Mekanism's own GUI assets.
 Hover the gauge for energy / capacity / draw per tick, hover the arrow for progress, duration, lanes, items per batch and the number of upgrade cards.
 Slots holding more than 127 items print the real amount in the bottom-right corner.
+Slot layout: seed (28,24), outputs from (84,18) in 4 columns, upgrades from (26,76) in 5 columns, player inventory (8,118), hotbar (8,176).
+**Shift click** moves a whole seed stack (including the hidden overflow above 127) and empties output slots completely in one go.
 
 ### JEI
 
@@ -153,6 +163,10 @@ progress arrow inside the machine opens the matching recipe.
 
 ## Changelog
 
+- **1.3.0** — Upgrade cards now go through Mekanisms official API (`mekanism.api.Upgrade` / `IUpgradeItem`, per-kind limit `Upgrade#getMax()` = 8) and stack inside one slot;
+  added proportional throttling so an overclocked machine never stalls dead when one tick costs more FE than the buffer holds; fixed GUI slot coordinates and shift click
+  (output slots empty in one go, seed stacks move entirely instead of stopping at 127); every config key got a section title and translation keys so Configured and
+  Forge Config Screens show localised names and descriptions.
 - **1.2.0** — Seed and output stack limits changed to **64 / 128 / 256 / 512** per tier (visible stack + hidden overflow counter to get around the 1.20.1 signed-byte limit);
   JEI recipe category added; textures and GUI regenerated from Mekanism-sampled colours; `maxSeedCapacity` renamed to `seedSlotCapCeiling` (default 1024);
   all config keys now have translatable names and descriptions so in-game config editors can display them.

@@ -6,7 +6,9 @@
 
 - **配方不消耗材料**：种子槽里的水晶只作为「识别用配料」，永不消耗、只要求存在。
 - **只消耗能量（FE）**：不引入任何流体，纯 FE 驱动，兼容 Mekanism 的 Forge Energy 转换。
-- **Mekanism 原生升级支持**：升级槽接受 Mekanism 升级卡（`mekanism:upgrade_*`，也可通过 `crystal_multiplier:upgrades` 物品标签扩展）。
+- **Mekanism 原生升级支持**：升级卡通过 Mekanism 官方接口识别（`mekanism.api.Upgrade` + `IUpgradeItem`），
+  同种卡最多 `Upgrade#getMax()` 张（速度 / 能量都是 8 张），卡本身可像 Mek 机器里那样叠在同一个槽内，
+  也可通过 `crystal_multiplier:upgrades` 物品标签扩展。
 - **Mekanism 风格升级语义**：速度卡提高处理速度（缩短批次时间），能量卡降低单次操作耗能，与 Mekanism 机器一致。
 - **工厂分级**：基础 / 高级 / 精英 / 终极四档，档位越高 → 能量缓存/接收更大、输出槽与升级槽更多、批次耗时更短、堆叠上限更高。
 - **任意档位都只能同时增殖一种水晶**。
@@ -48,6 +50,8 @@
 - **速度只压缩 tick 数**，不改变一批次的产出数量；每 tick 耗能同倍上升，因此单次操作总耗能不变。
 - 并行数只乘在产量/耗能上，速度只由「配方 ticks ÷ 速度因子」决定，两者互不串味，
   不会和任何修改输出速度的附属产生重复计算或冲突。
+- **不会憋死**：如果一 tick 需要的 FE 超过能量缓存（例如叠了太多速度卡），机器不会停死，
+  而是按「这一 tick 能付多少电」推进相应比例的进度（与 Mekanism 的降速处理一致），每颗水晶的总 FE 成本不变。
 
 ## 全局配置 `config/crystal_multiplier-common.toml`
 
@@ -63,6 +67,10 @@
 | `energyUpgradeEfficiencyFactor` | **2.0** | Mek 式能量卡：每张卡的省电倍率（2.0 = 每张卡耗能减半） |
 | `oneTickOutput` | **false** | 全局开关：每 1 tick 完成一次输出（单次操作的总 FE 在该 tick 内一次扣完） |
 
+每个键都带翻译键（`crystal_multiplier.configuration.machine.<键名>` 与同名 `.tooltip`），段标题是
+`crystal_multiplier.configuration.machine`，所以 **Configured（MrCrayfish）** 与 **Forge Config Screens** 这类界面模组
+会直接显示中文名称与说明；所有值都是每次运行时重新读取，改完立刻生效（无需重启，也不用重新拼机器）。
+
 ## 升级卡效果（Mekanism 语义）
 
 - `mekanism:upgrade_speed`：**提速**。每张卡把批次时间 ÷2（连乘，2 张 = 4 倍速，3 张 = 8 倍速），
@@ -70,6 +78,7 @@
 - `mekanism:upgrade_energy`：**省电**。每张卡把单次操作耗能 ÷2（连乘，2 张 = 1/4 耗能），
   **完全不碰能量缓存**（能量槽只由档位决定）；倍率上限同样是 4096 倍。
 - 任意升级卡：每张都给种子槽 **+16 容量**，多插卡 = 能放更多水晶 = 更多并行。
+- 卡是可叠的：一个升级槽里最多放 8 张同种卡，两张卡叠一槽与插两个槽效果完全相同；超出 `Upgrade#getMax()` 会被拒绝放入。
 - 其它升级卡（muffling/gas/filter/anchor…）可放入，不影响水晶增殖逻辑本身。
 
 ## 配方机制
@@ -111,6 +120,9 @@
 
 - 配色直接从 Mekanism 的 GUI 贴图采样（外框 190,190,190 / 机身 67,67,67 / 凹陷槽 139,139,139），与 Mek 机器并排没有画风差。
 - 槽位存量超过 127 时右下角显示真实数量，悬停 tooltip 显示「存量: 总量 / 容量」。
+- 槽位布局：种子槽 (28,24)、输出槽 4 列起 (84,18)、升级槽 5 列起 (26,76)、玩家背包 (8,118)、快捷栏 (8,176)。
+- **Shift 点击**：种子槽整栈搬入（含超过 127 的隐藏溢出部分），输出槽一次性抽空到玩家背包，
+  不会再出现「按 shift 只取出 127 个、剩下的卡在槽里」的情况。
 - **JEI**：装了 JEI 会多出「水晶增殖」分类，显示种子（不消耗）、产物、每 tick 耗能、单次耗时；
   四档机器都是该分类的催化剂，机器界面里点击进度箭头可直接跳到对应配方。
 
@@ -119,10 +131,12 @@
 ```bash
 export JAVA_HOME=/path/to/jdk-17   # 需要 JDK 17
 ./gradlew build
-# 产物：build/libs/crystal_multiplier-1.2.0.jar
+# 产物：build/libs/crystal_multiplier-1.3.0.jar
 ```
 
-本模组不 import 任何 AE2 / Mekanism 类，全部通过注册名与物品标签访问，因此 `libs/` 目录可以为空（`build.gradle` 里预留了 `compileOnly fileTree(dir: 'libs')` 以便本地调试）。
+AE2 的物品只用注册名（`ae2:certus_quartz_crystal` 等）与标签访问，不需要 AE2 的类；Mekanism 只用到升级卡的公开接口
+（`mekanism.api.Upgrade`、`mekanism.common.item.interfaces.IUpgradeItem`），通过 `compileOnly` 依赖提供，不会打进 jar，
+运行时由 Mekanism 本体提供。`build.gradle` 里另留了 `compileOnly fileTree(dir: 'libs')` 便于本地离线调试。
 
 若在国内下载 Gradle 过慢，可把 `gradle/wrapper/gradle-wrapper.properties` 里的 `distributionUrl` 换成 `https://mirrors.huaweicloud.com/gradle/gradle-8.5-bin.zip`。
 
@@ -134,6 +148,9 @@ export JAVA_HOME=/path/to/jdk-17   # 需要 JDK 17
 
 ## 更新记录
 
+- **1.3.0**：升级卡改用 **Mekanism 官方接口**（`mekanism.api.Upgrade` / `IUpgradeItem`，卡的注册名与 Mek 完全一致，同种上限即 `Upgrade#getMax()` = 8 张），速度 / 能量卡可在**同一个槽内叠放**（叠 2 张等于插 2 张）；
+  新增**按电量比例推进**的降速处理，避免叠太多速度卡把机器憋死；修正界面槽位坐标（种子槽 / 输出槽 / 升级槽 / 玩家背包全部对齐新底图）；
+  修正 **Shift 点击**：输出槽一次抽空、种子槽整栈放入（不再卡在 127）；配置项补上段标题与 9 个选项的翻译键，Configured / Forge Config Screens 能直接显示中文名称与说明，改动即时生效。
 - **1.2.0**：种子槽 / 输出槽堆叠上限按档位改为 **64 / 128 / 256 / 512**（用「可见栈 + 隐藏溢出计数」实现，绕过 1.20.1 物品栈数量的 127 字节上限，界面会标出真实总量，存档与同步包都会持久化）；
   新增 **JEI 分类**（种子 / 产物 / 耗能 / 耗时，四档机器为催化剂，进度箭头可点击跳转）；贴图与 GUI 改为按 Mekanism 贴图采样生成的新版（四档独立配色，凹陷槽位逐像素对齐 Mek）；
   配置项 `maxSeedCapacity` 改名为 `seedSlotCapCeiling`（默认 1024，范围 64~4096，旧键自动失效，不会把大容量档位卡在 127）；

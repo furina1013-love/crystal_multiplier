@@ -41,15 +41,15 @@ public class CrystalMultiplierScreen extends AbstractContainerScreen<CrystalMult
     private static final int STATUS_ERROR = 0xFFFF5555;
 
     private static final int ENERGY_X = 8;
-    private static final int ENERGY_Y = 17;
+    private static final int ENERGY_Y = 18;
     private static final int ENERGY_W = 12;
     private static final int ENERGY_H = 54;
-    private static final int BAR_X = 64;
-    private static final int BAR_Y = 33;
+    private static final int BAR_X = 50;
+    private static final int BAR_Y = 24;
     private static final int BAR_W = 26;
     private static final int BAR_H = 16;
-    private static final int STATUS_X = 26;
-    private static final int STATUS_Y = 57;
+    private static final int STATUS_X = 28;
+    private static final int STATUS_Y = 46;
 
     private final CrystalTier tier;
 
@@ -176,7 +176,7 @@ public class CrystalMultiplierScreen extends AbstractContainerScreen<CrystalMult
     @Override
     protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
         graphics.drawString(this.font, this.title, this.titleLabelX, this.titleLabelY, TEXT, false);
-        graphics.drawString(this.font, this.playerInventoryTitle, this.inventoryLabelX, this.inventoryLabelY,
-                TEXT_DARK, false);
+        // No "Inventory" caption: the upgrade band sits directly above the player inventory and there is
+        // no room for a label that would not overlap the slots of the elite and ultimate tiers.
     }
 }

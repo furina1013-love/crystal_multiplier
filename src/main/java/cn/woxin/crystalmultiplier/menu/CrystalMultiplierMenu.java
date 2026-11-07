@@ -20,17 +20,20 @@ public class CrystalMultiplierMenu extends AbstractContainerMenu {
     public static final int GUI_WIDTH = 176;
     public static final int GUI_HEIGHT = 198;
 
-    private static final int SEED_X = 44;
-    private static final int SEED_Y = 35;
-    private static final int OUTPUT_BASE_X = 106;
-    private static final int OUTPUT_BASE_Y = 17;
+    // Layout shared with the baked background texture (textures/gui/machine.png) and the slot overlay
+    // drawn by the screen: energy gauge on the left, seed -> arrow -> output grid, upgrades in the
+    // middle band, player inventory at the bottom.
+    private static final int SEED_X = 28;
+    private static final int SEED_Y = 24;
+    private static final int OUTPUT_BASE_X = 84;
+    private static final int OUTPUT_BASE_Y = 18;
     private static final int OUTPUT_COLUMNS = 4;
     private static final int UPGRADE_BASE_X = 26;
-    private static final int UPGRADE_BASE_Y = 74;
+    private static final int UPGRADE_BASE_Y = 76;
     private static final int UPGRADE_COLUMNS = 5;
     private static final int PLAYER_INV_X = 8;
-    private static final int PLAYER_INV_Y = 110;
-    private static final int HOTBAR_Y = 170;
+    private static final int PLAYER_INV_Y = 118;
+    private static final int HOTBAR_Y = 176;
 
     private final CrystalMultiplierBlockEntity blockEntity;
     private final ContainerData data;
@@ -106,7 +109,19 @@ public class CrystalMultiplierMenu extends AbstractContainerMenu {
             int column = index % UPGRADE_COLUMNS;
             int row = index / UPGRADE_COLUMNS;
             this.addSlot(new SlotItemHandler(inventory, blockEntity.getUpgradeStart() + index,
-                    UPGRADE_BASE_X + column * 18, UPGRADE_BASE_Y + row * 18));
+                    UPGRADE_BASE_X + column * 18, UPGRADE_BASE_Y + row * 18) {
+                @Override
+                public int getMaxStackSize() {
+                    return CrystalMultiplierBlockEntity.MAX_UPGRADE_SLOT_STACK;
+                }
+
+                @Override
+                public int getMaxStackSize(ItemStack stack) {
+                    // Mekanism cards stack up to 8 in one slot, exactly like inside a Mekanism machine.
+                    return Math.max(1, Math.min(CrystalMultiplierBlockEntity.MAX_UPGRADE_SLOT_STACK,
+                            stack.getMaxStackSize()));
+                }
+            });
         }
 
         for (int row = 0; row < 3; row++) {
@@ -209,6 +224,14 @@ public class CrystalMultiplierMenu extends AbstractContainerMenu {
             result = stack.copy();
             int machineSlots = this.getMachineSlotCount();
             if (index < machineSlots) {
+                if (this.isOutputSlot(index)) {
+                    // An output slot holds the visible stack plus a hidden overflow, so one shift click keeps
+                    // handing the player byte safe stacks until the slot is empty or the inventory is full.
+                    int before = this.blockEntity.getInventory().getStored(index);
+                    this.drainOutputSlot(index);
+                    int moved = before - this.blockEntity.getInventory().getStored(index);
+                    return moved <= 0 ? ItemStack.EMPTY : result.copyWithCount(moved);
+                }
                 if (!this.moveItemStackTo(stack, machineSlots, this.slots.size(), true)) {
                     return ItemStack.EMPTY;
                 }
@@ -249,6 +272,34 @@ public class CrystalMultiplierMenu extends AbstractContainerMenu {
             slot.onTake(player, stack);
         }
         return result;
+    }
+
+    private boolean isOutputSlot(int menuIndex) {
+        return menuIndex >= this.blockEntity.getOutputStart() && menuIndex < this.blockEntity.getOutputEnd();
+    }
+
+    /** Empties an output slot into the player inventory, one byte safe stack per pass. */
+    private void drainOutputSlot(int menuIndex) {
+        int machineSlots = this.getMachineSlotCount();
+        for (int pass = 0; pass < 256; pass++) {
+            ItemStack offered = this.blockEntity.getInventory()
+                    .extractItem(menuIndex, CrystalMultiplierBlockEntity.MAX_STACK_COUNT, true);
+            if (offered.isEmpty()) {
+                return;
+            }
+            ItemStack moving = offered.copy();
+            if (!this.moveItemStackTo(moving, machineSlots, this.slots.size(), true)) {
+                return;
+            }
+            int moved = offered.getCount() - moving.getCount();
+            if (moved <= 0) {
+                return;
+            }
+            this.blockEntity.getInventory().extractItem(menuIndex, moved, false);
+            if (!moving.isEmpty()) {
+                return;
+            }
+        }
     }
 
     @Override

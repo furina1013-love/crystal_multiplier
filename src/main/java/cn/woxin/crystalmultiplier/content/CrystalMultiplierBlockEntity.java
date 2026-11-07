@@ -34,6 +34,9 @@ import net.minecraftforge.registries.ForgeRegistries;
 
 import javax.annotation.Nullable;
 
+import mekanism.api.Upgrade;
+import mekanism.common.item.interfaces.IUpgradeItem;
+
 import cn.woxin.crystalmultiplier.CrystalMultiplierMod;
 import cn.woxin.crystalmultiplier.config.CrystalMultiplierConfig;
 import cn.woxin.crystalmultiplier.menu.CrystalMultiplierMenu;
@@ -61,6 +64,13 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
 
     /** No item count may exceed this: 1.20.1 stores the count in a signed byte, on disk and on the wire. */
     public static final int MAX_STACK_COUNT = 127;
+
+    /**
+     * Upper bound of one upgrade slot. Mekanism upgrade cards stack to 8; the real cap per kind comes
+     * from {@link Upgrade#getMax()} and is enforced by the inventory validation, so this only has to
+     * stay byte safe.
+     */
+    public static final int MAX_UPGRADE_SLOT_STACK = 64;
 
     private final CrystalTier tier;
     private final MachineInventory inventory;
@@ -308,28 +318,58 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
 
     /* ------------------------------------------------------------------ upgrades */
 
-    public static boolean isUpgradeItem(ItemStack stack) {
+    /**
+     * Asks Mekanism itself what kind of upgrade a stack is: every upgrade item of Mekanism and of any
+     * addon implements {@link IUpgradeItem}, so this works for cards this mod has never heard of.
+     * The id based fallback only exists for stacks whose item is not loaded through that interface
+     * (for example a datapack card listed in our own tag).
+     */
+    @Nullable
+    public static Upgrade upgradeType(ItemStack stack) {
         if (stack.isEmpty()) {
-            return false;
+            return null;
         }
-        if (stack.is(UPGRADES_TAG)) {
-            return true;
+        if (stack.getItem() instanceof IUpgradeItem upgradeItem) {
+            Upgrade type = upgradeItem.getUpgradeType(stack);
+            if (type != null) {
+                return type;
+            }
         }
         ResourceLocation key = ForgeRegistries.ITEMS.getKey(stack.getItem());
-        return key != null && "mekanism".equals(key.getNamespace()) && key.getPath().startsWith("upgrade_");
+        if (key == null || !"mekanism".equals(key.getNamespace())) {
+            return null;
+        }
+        return switch (key.getPath()) {
+            case "upgrade_speed" -> Upgrade.SPEED;
+            case "upgrade_energy" -> Upgrade.ENERGY;
+            case "upgrade_filter" -> Upgrade.FILTER;
+            case "upgrade_gas" -> Upgrade.GAS;
+            case "upgrade_muffling" -> Upgrade.MUFFLING;
+            case "upgrade_anchor" -> Upgrade.ANCHOR;
+            case "upgrade_stone_generator" -> Upgrade.STONE_GENERATOR;
+            default -> null;
+        };
     }
 
+    public static boolean isUpgradeItem(ItemStack stack) {
+        return upgradeType(stack) != null || (!stack.isEmpty() && stack.is(UPGRADES_TAG));
+    }
+
+    /** How many cards of this kind a machine accepts, straight from Mekanism (8 for speed and energy). */
+    public static int maxUpgradeCount(ItemStack stack) {
+        Upgrade type = upgradeType(stack);
+        int max = type == null ? 8 : type.getMax();
+        return Math.max(1, Math.min(64, max));
+    }
+
+    /** 1 = speed, 2 = energy, 3 = any other card that is accepted but does not change the maths. */
     public static int upgradeKind(ItemStack stack) {
-        ResourceLocation key = ForgeRegistries.ITEMS.getKey(stack.getItem());
-        if (key == null) {
-            return 0;
+        Upgrade type = upgradeType(stack);
+        if (type == Upgrade.SPEED) {
+            return 1;
         }
-        if ("mekanism".equals(key.getNamespace())) {
-            return switch (key.getPath()) {
-                case "upgrade_speed" -> 1;
-                case "upgrade_energy" -> 2;
-                default -> 3;
-            };
+        if (type == Upgrade.ENERGY) {
+            return 2;
         }
         return 3;
     }
@@ -349,7 +389,8 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
         for (int slot = this.getUpgradeStart(); slot < this.getUpgradeEnd(); slot++) {
             ItemStack stack = this.inventory.getStackInSlot(slot);
             if (!stack.isEmpty() && upgradeKind(stack) == kind) {
-                count++;
+                // Cards stack, so a stacked slot counts as several cards just like in Mekanism.
+                count += stack.getCount() + this.inventory.getExtra(slot);
             }
         }
         return count;
@@ -419,9 +460,13 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
                     this.ticksRequired = ticks;
                     this.energyPerTick = costPerTick;
                 }
-                if (this.energy >= this.energyPerTick) {
-                    this.energy -= this.energyPerTick;
-                    this.progress += 1.0D;
+                // Mekanism style throttling: when the internal buffer cannot pay a whole tick the machine
+                // does not stall dead, it spends what it has and works proportionally slower. Without this
+                // an overclocked machine could ask for more FE per tick than its buffer can ever hold.
+                int charge = Math.min(this.energyPerTick, this.energy);
+                if (charge > 0) {
+                    this.energy -= charge;
+                    this.progress += (double) charge / (double) this.energyPerTick;
                     working = true;
                     this.setChanged();
                     if (this.progress >= this.ticksRequired) {
@@ -707,8 +752,9 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
             if (slot >= machine.getOutputStart() && slot < machine.getOutputEnd()) {
                 return Math.max(1, machine.getOutputStackLimit());
             }
-            // One upgrade card per upgrade slot, otherwise counting the cards would lie.
-            return 1;
+            // Upgrade cards stack like they do inside a Mekanism machine (a speed card stacks to 8);
+            // how many cards of one kind a machine accepts is decided by isItemValid.
+            return MAX_UPGRADE_SLOT_STACK;
         }
 
         /**
@@ -735,7 +781,19 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
                 return true;
             }
             if (slot >= CrystalMultiplierBlockEntity.this.getUpgradeStart()) {
-                return isUpgradeItem(stack);
+                if (!isUpgradeItem(stack)) {
+                    return false;
+                }
+                // Same rule as Mekanism: at most Upgrade#getMax cards of one kind.
+                int installed = 0;
+                for (int other = CrystalMultiplierBlockEntity.this.getUpgradeStart();
+                        other < CrystalMultiplierBlockEntity.this.getUpgradeEnd(); other++) {
+                    ItemStack existing = this.getStackInSlot(other);
+                    if (!existing.isEmpty() && ItemStack.isSameItem(existing, stack)) {
+                        installed += existing.getCount() + this.getExtra(other);
+                    }
+                }
+                return installed + stack.getCount() <= maxUpgradeCount(stack);
             }
             return false;
         }
@@ -756,7 +814,7 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
                 int itemMax = stack.getMaxStackSize();
                 return Math.max(1, Math.min(capacity, itemMax >= 64 ? capacity : itemMax));
             }
-            return 1;
+            return Math.max(1, Math.min(capacity, stack.getMaxStackSize()));
         }
 
         @Override
