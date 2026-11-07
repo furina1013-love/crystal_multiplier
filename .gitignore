@@ -2,4 +2,9 @@
 build/
 run/
 run-data/
+out/
+libs/
+.idea/
+*.iml
+.vscode/
 *.log

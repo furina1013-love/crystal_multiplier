@@ -99,12 +99,14 @@
 ## 构建
 
 ```bash
-export JAVA_HOME=/opt/jdk/jdk-17.0.2
+export JAVA_HOME=/path/to/jdk-17   # 需要 JDK 17
 ./gradlew build
 # 产物：build/libs/crystal_multiplier-1.0.0.jar
 ```
 
-依赖的 AE2 / Mekanism / ExtendedAE jar 放在 `libs/` 下作为 `compileOnly`（本模组通过注册名与物品标签访问它们）。
+本模组不 import 任何 AE2 / Mekanism 类，全部通过注册名与物品标签访问，因此 `libs/` 目录可以为空（`build.gradle` 里预留了 `compileOnly fileTree(dir: 'libs')` 以便本地调试）。
+
+若在国内下载 Gradle 过慢，可把 `gradle/wrapper/gradle-wrapper.properties` 里的 `distributionUrl` 换成 `https://mirrors.huaweicloud.com/gradle/gradle-8.5-bin.zip`。
 
 ## 兼容性说明
 
