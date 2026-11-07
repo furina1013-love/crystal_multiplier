@@ -84,6 +84,19 @@ public class CrystalMultiplierMenu extends AbstractContainerMenu {
                 public boolean mayPlace(ItemStack stack) {
                     return false;
                 }
+
+                @Override
+                public int getMaxStackSize() {
+                    return blockEntity.getOutputStackLimit();
+                }
+
+                @Override
+                public int getMaxStackSize(ItemStack stack) {
+                    // Higher tiers pack more items into the same output slot.
+                    return Math.max(1, Math.min(blockEntity.getOutputStackLimit(), stack.getMaxStackSize() >= 64
+                            ? blockEntity.getOutputStackLimit()
+                            : stack.getMaxStackSize()));
+                }
             });
         }
 
@@ -148,6 +161,18 @@ public class CrystalMultiplierMenu extends AbstractContainerMenu {
 
     public boolean isSeedValid() {
         return this.data.get(8) != 0;
+    }
+
+    public int getSeedCapacity() {
+        return this.blockEntity.getSeedCapacity();
+    }
+
+    public int getSpeedUpgrades() {
+        return this.blockEntity.getSpeedUpgradeCount();
+    }
+
+    public int getEnergyUpgrades() {
+        return this.blockEntity.getEnergyUpgradeCount();
     }
 
     public int getItemsPerBatch() {

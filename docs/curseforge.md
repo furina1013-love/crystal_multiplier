@@ -22,14 +22,15 @@ An AE2-flavoured multiplication machine for crystal production lines. Instead of
 
 ## Machine tiers
 
-| Tier | Speed | Energy buffer | Max input | Output slots | Upgrade slots |
-| --- | --- | --- | --- | --- | --- |
-| Basic | 1x | 2,000,000 FE | 20,000 FE/t | 3 | 4 |
-| Advanced | 2x | 8,000,000 FE | 80,000 FE/t | 6 | 6 |
-| Elite | 4x | 32,000,000 FE | 320,000 FE/t | 9 | 8 |
-| Ultimate | 8x | 128,000,000 FE | 1,280,000 FE/t | 12 | 10 |
+| Tier | Speed | Energy buffer | Max input | Output slots | Upgrade slots | Seed stack limit | Output stack limit |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Basic | 1x | 200,000 FE | 20,000 FE/t | 3 | 4 | 64 | 64 |
+| Advanced | 2x | 800,000 FE | 80,000 FE/t | 6 | 6 | 80 | 80 |
+| Elite | 4x | 3,200,000 FE | 320,000 FE/t | 9 | 8 | 96 | 96 |
+| Ultimate | 8x | 12,800,000 FE | 1,280,000 FE/t | 12 | 10 | 112 | 112 |
 
-Tiers only change speed, energy handling and slot counts. Every tier still multiplies only one crystal type at a time.
+Tiers change speed, energy handling, slot counts and stack limits. Every tier still multiplies only one crystal type at a time.
+1.20.1 stores item counts in a signed byte (127 max), so the stack limits are multiples of 16.
 
 ---
 
@@ -39,7 +40,8 @@ Tiers only change speed, energy handling and slot counts. Every tier still multi
 2. **Parallel lanes = seed count / 16** — 16 crystals = 1 lane, 32 = 2 lanes, 64 = 4 lanes.
 3. Output *and* energy draw scale with the lane count, so the **FE cost per crystal stays the same** — more seeds simply means more production lines.
 4. Seeds are **never consumed**. The machine only stalls when the output slots are full.
-5. Seed slot capacity is 64 by default and gains **+16 per inserted upgrade card** (up to a configurable maximum).
+5. Seed slot capacity comes from the tier (64 / 80 / 96 / 112) and gains **+16 per inserted upgrade card** (global cap 127, configurable).
+6. Seed and output stacks may exceed 64, so an Ultimate machine holds 112 seeds = 7 parallel lanes.
 
 ---
 
@@ -47,12 +49,13 @@ Tiers only change speed, energy handling and slot counts. Every tier still multi
 
 | Card | Effect |
 | --- | --- |
-| `mekanism:upgrade_speed` | **Does not speed up processing.** Each card adds **+50% items per finished batch** (2 cards = 2x, 4 cards = 3x). Energy per batch scales with it, so FE per crystal is unchanged. |
-| `mekanism:upgrade_energy` | **Does not add any energy buffer.** Each card raises energy efficiency: consumption is divided by (1 + 0.5 x cards). |
+| `mekanism:upgrade_speed` | **Faster processing**, exactly like Mekanism. Each card **halves the batch time** (stacking: 2 cards = 4x speed, 3 cards = 8x). FE per tick rises by the same factor, so FE per crystal is unchanged. |
+| `mekanism:upgrade_energy` | **Cheaper processing**, exactly like Mekanism. Each card **halves the energy per operation** (2 cards = 1/4 cost) and **never touches any energy buffer** (the buffer is tier-only). |
 | Any upgrade card | **+16 seed slot capacity** each, so more cards means more crystals and more lanes. |
 | Others (muffling, gas, filter, anchor) | Accepted, they just do not affect multiplication. |
 
-In short: speed cards give you *more items per batch*, energy cards make it *cheaper*, and every card lets you *stack more seeds*.
+In short: speed cards make the *same job faster* (higher draw per tick, same total cost), energy cards make it *cheaper*, and every card lets you *stack more seeds*.
+Both card types stack multiplicatively (up to 4096x) and both are configurable (default x2 per card).
 
 ---
 
@@ -83,7 +86,7 @@ Recipes live in `data/crystal_multiplier/recipes/crystal_multiplication/` with t
 ```
 
 - `seed` is only matched, never consumed.
-- One operation yields `result.count x lanes x (1 + 0.5 x speed cards)` items, repeating until the output slots are full.
+- One operation yields `result.count x lanes` items, repeating until the output slots are full.
 - `crystals_per_parallel` is optional and falls back to the global config value.
 
 ### Bundled recipes
@@ -105,14 +108,13 @@ Note: ExtendedAE for 1.20.1 (modid `expatternprovider`) does not ship `entro_cry
 | Key | Default | Meaning |
 | --- | --- | --- |
 | `crystalsPerParallel` | 16 | Crystals required per parallel lane |
-| `baseSeedCapacity` | 64 | Seed slot capacity without upgrade cards |
-| `seedCapacityPerUpgrade` | 16 | Capacity added per upgrade card |
-| `maxSeedCapacity` | 64 | Hard cap for seed slot capacity (max 127) |
+| `seedCapacityPerUpgrade` | 16 | Capacity added per upgrade card (base capacity is tier-driven) |
+| `maxSeedCapacity` | 127 | Hard cap for seed slot capacity (1.20.1 max) |
 | `maxParallel` | 64 | Parallel lane cap per machine |
-| `baseSpeedMultiplier` | 4.0 | Global base speed multiplier |
+| `baseSpeedMultiplier` | 4.0 | Global base speed multiplier (raises FE/t, total cost stays the same) |
 | `baseEnergyMultiplier` | 0.5 | Global base energy multiplier (0.5 = half cost) |
-| `speedUpgradeOutputPerCard` | 0.5 | Items-per-batch bonus per speed card |
-| `energyUpgradeEfficiencyPerCard` | 0.5 | Efficiency bonus per energy card |
+| `speedUpgradeSpeedPerCard` | 2.0 | Speed multiplier per speed card (2.0 = half batch time) |
+| `energyUpgradeEfficiencyFactor` | 2.0 | Energy divisor per energy card (2.0 = half energy) |
 | `oneTickOutput` | false | Finish one batch every tick (cheat-level, off by default) |
 
 ---
@@ -122,10 +124,27 @@ Note: ExtendedAE for 1.20.1 (modid `expatternprovider`) does not ship `entro_cry
 | Upgrades | Items per batch | Batch time | Draw | FE per crystal |
 | --- | --- | --- | --- | --- |
 | none | 8 | 2.5 s | 1,600 FE/t | 10,000 |
-| 2x speed | 16 | 2.5 s | 3,200 FE/t | 10,000 |
-| 2x speed + 2x energy | 16 | 2.5 s | 1,600 FE/t | 5,000 |
+| 2x speed | 8 | 0.65 s | 6,400 FE/t | ~10,400 (tick rounding) |
+| 2x energy | 8 | 2.5 s | 400 FE/t | 2,500 |
+| 2x speed + 2x energy | 8 | 0.65 s | 1,600 FE/t | ~2,600 (tick rounding) |
 
 Ultimate tier with the same 64 seeds: 8 items every 0.3 s at 12,800 FE/t, roughly 9,600 FE per crystal.
+
+---
+
+## GUI
+
+The screen is drawn in Mekanism's machine style: light steel frame, dark grey body, inset slots, a tick-marked energy gauge and a filling progress arrow.
+Hover the gauge for energy / capacity / draw per tick, hover the arrow for progress, duration, lanes, items per batch and the number of upgrade cards.
+
+---
+
+## Changelog
+
+- **1.1.0** — Mekanism-style GUI and textures; speed and energy cards follow Mekanism semantics (faster / cheaper, both configurable and multiplicative); energy buffers reduced to 1/10;
+  seed and output stack limits raised per tier (64 / 80 / 96 / 112) with the seed capacity now tier-driven.
+- **1.0.2** — Fixed client-side numbers (energy, capacity, draw, items per batch), overlapping slots on Elite/Ultimate, overlapping title, status text over the energy bar, and items being lost when the machine is broken.
+- **1.0.1** — Fixed the machine GUI not opening on right click; each tier got its own texture.
 
 ---
 
@@ -135,6 +154,7 @@ Ultimate tier with the same 64 seeds: 8 items every 0.3 s at 12,800 FE/t, roughl
 - **Can I multiply several crystal types at once?** No — one stack, one crystal type. Stack more of it to add lanes.
 - **Will addons that change output speed conflict?** No. Speed and yield are computed entirely inside this mod and never read modified values from other mods.
 - **Automatable?** Yes. Output slots can be extracted with hoppers or pipes; the seed slot accepts input and never loses its contents.
+- **How do upgrade cards stack?** Multiplicatively. Speed cards: 2 cards = 4x faster. Energy cards: 2 cards = 1/4 energy. Caps at 4096x, adjustable in the config.
 
 ---
 

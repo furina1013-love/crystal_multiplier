@@ -3,6 +3,7 @@ package cn.woxin.crystalmultiplier.client;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.Slot;
 import net.minecraftforge.api.distmarker.Dist;
@@ -10,23 +11,34 @@ import net.minecraftforge.api.distmarker.OnlyIn;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 import cn.woxin.crystalmultiplier.content.CrystalTier;
 import cn.woxin.crystalmultiplier.menu.CrystalMultiplierMenu;
 
+/**
+ * Mekanism style machine screen: the background, the recessed slots, the gauged energy bar and the
+ * filling arrow all come from our own textures which follow Mekanism's palette (light steel frame,
+ * dark grey body, inset slots).
+ */
 @OnlyIn(Dist.CLIENT)
 public class CrystalMultiplierScreen extends AbstractContainerScreen<CrystalMultiplierMenu> {
 
-    private static final int PANEL = 0xFF2A2A2A;
-    private static final int SLOT_DARK = 0xFF171717;
-    private static final int SLOT_LIGHT = 0xFF565656;
-    private static final int BORDER_DARK = 0xFF0B0B0B;
-    private static final int ENERGY_EMPTY = 0xFF2B1A1A;
-    private static final int ENERGY_FULL = 0xFFD94F4F;
-    private static final int PROGRESS_EMPTY = 0xFF1E1E1E;
-    private static final int PROGRESS_FULL = 0xFF5FD9A0;
+    private static final ResourceLocation TEXTURE = new ResourceLocation("crystal_multiplier",
+            "textures/gui/machine.png");
+    private static final ResourceLocation SLOT = new ResourceLocation("crystal_multiplier",
+            "textures/gui/slot.png");
+    private static final ResourceLocation GAUGE = new ResourceLocation("crystal_multiplier",
+            "textures/gui/gauge_ticks.png");
+    private static final ResourceLocation ENERGY_FILL = new ResourceLocation("crystal_multiplier",
+            "textures/gui/energy_fill.png");
+    private static final ResourceLocation ARROW_FILL = new ResourceLocation("crystal_multiplier",
+            "textures/gui/arrow_fill.png");
+
     private static final int TEXT = 0xFFD7D7D7;
+    private static final int TEXT_DARK = 0xFF3A3A3A;
+    private static final int STATUS_ERROR = 0xFFFF5555;
 
     private static final int ENERGY_X = 8;
     private static final int ENERGY_Y = 17;
@@ -38,7 +50,6 @@ public class CrystalMultiplierScreen extends AbstractContainerScreen<CrystalMult
     private static final int BAR_H = 16;
     private static final int STATUS_X = 26;
     private static final int STATUS_Y = 57;
-    private static final int STATUS_ERROR = 0xFFFF5555;
 
     private final CrystalTier tier;
 
@@ -78,6 +89,7 @@ public class CrystalMultiplierScreen extends AbstractContainerScreen<CrystalMult
             List<Component> lines = new ArrayList<>();
             lines.add(Component.translatable("gui.crystal_multiplier.per_parallel", per));
             lines.add(Component.translatable("gui.crystal_multiplier.parallel", this.menu.getParallelism()));
+            lines.add(Component.translatable("gui.crystal_multiplier.seed_size", this.menu.getSeedCapacity()));
             lines.add(Component.translatable("gui.crystal_multiplier.seed_tip"));
             graphics.renderTooltip(this.font, lines, Optional.empty(), mouseX, mouseY);
         }
@@ -94,9 +106,12 @@ public class CrystalMultiplierScreen extends AbstractContainerScreen<CrystalMult
             List<Component> lines = new ArrayList<>();
             lines.add(Component.translatable("gui.crystal_multiplier.progress", this.menu.getProgressPercent()));
             lines.add(Component.translatable("gui.crystal_multiplier.time",
-                    String.format(java.util.Locale.ROOT, "%.1f", this.menu.getTicksRequired() / 20.0D)));
+                    String.format(Locale.ROOT, "%.1f", this.menu.getTicksRequired() / 20.0D)));
             lines.add(Component.translatable("gui.crystal_multiplier.parallel", this.menu.getParallelism()));
             lines.add(Component.translatable("gui.crystal_multiplier.batch", this.menu.getItemsPerBatch()));
+            lines.add(Component.translatable("gui.crystal_multiplier.speed_upgrades", this.menu.getSpeedUpgrades()));
+            lines.add(Component.translatable("gui.crystal_multiplier.energy_upgrades",
+                    this.menu.getEnergyUpgrades()));
             if (this.menu.isActive()) {
                 lines.add(Component.translatable("gui.crystal_multiplier.active"));
             } else {
@@ -110,45 +125,34 @@ public class CrystalMultiplierScreen extends AbstractContainerScreen<CrystalMult
     protected void renderBg(GuiGraphics graphics, float partialTick, int mouseX, int mouseY) {
         int x = this.leftPos;
         int y = this.topPos;
-        int w = this.imageWidth;
-        int h = this.imageHeight;
 
-        graphics.fill(x - 1, y - 1, x + w + 1, y + h + 1, BORDER_DARK);
-        graphics.fill(x, y, x + w, y + h, PANEL);
-        graphics.fill(x + 1, y + 1, x + w - 1, y + 3, this.tier.getTintColor());
-        graphics.fill(x + 1, y + 1, x + 3, y + h - 1, this.tier.getTintColor());
+        graphics.blit(TEXTURE, x, y, 0, 0, this.imageWidth, this.imageHeight);
 
         for (Slot slot : this.menu.slots) {
-            int slotX = x + slot.x - 1;
-            int slotY = y + slot.y - 1;
-            graphics.fill(slotX, slotY, slotX + 18, slotY + 18, SLOT_LIGHT);
-            graphics.fill(slotX + 1, slotY + 1, slotX + 17, slotY + 17, SLOT_DARK);
+            graphics.blit(SLOT, x + slot.x - 1, y + slot.y - 1, 0, 0, 18, 18, 18, 18);
         }
 
         int energyX = x + ENERGY_X;
         int energyY = y + ENERGY_Y;
-        graphics.fill(energyX - 1, energyY - 1, energyX + ENERGY_W + 1, energyY + ENERGY_H + 1, BORDER_DARK);
-        graphics.fill(energyX, energyY, energyX + ENERGY_W, energyY + ENERGY_H, ENERGY_EMPTY);
         int capacity = this.menu.getEnergyCapacity();
         float ratio = capacity <= 0 ? 0.0F : Math.min(1.0F, (float) this.menu.getEnergy() / (float) capacity);
         int filled = (int) Math.floor(ratio * ENERGY_H);
         if (filled > 0) {
-            graphics.fill(energyX, energyY + ENERGY_H - filled, energyX + ENERGY_W, energyY + ENERGY_H, ENERGY_FULL);
+            graphics.blit(ENERGY_FILL, energyX, energyY + ENERGY_H - filled, 0, ENERGY_H - filled, ENERGY_W,
+                    filled, ENERGY_W, ENERGY_H);
         }
+        graphics.blit(GAUGE, energyX, energyY, 0, 0, ENERGY_W, ENERGY_H, ENERGY_W, ENERGY_H);
 
-        int barX = x + BAR_X;
-        int barY = y + BAR_Y;
-        graphics.fill(barX - 1, barY - 1, barX + BAR_W + 1, barY + BAR_H + 1, BORDER_DARK);
-        graphics.fill(barX, barY, barX + BAR_W, barY + BAR_H, PROGRESS_EMPTY);
         int progress = (int) Math.round(BAR_W * this.menu.getProgressPercent() / 100.0D);
         if (progress > 0) {
-            graphics.fill(barX, barY, barX + Math.min(BAR_W, progress), barY + BAR_H, PROGRESS_FULL);
+            graphics.blit(ARROW_FILL, x + BAR_X, y + BAR_Y, 0, 0, Math.min(BAR_W, progress), BAR_H, BAR_W, BAR_H);
         }
     }
 
     @Override
     protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
         graphics.drawString(this.font, this.title, this.titleLabelX, this.titleLabelY, TEXT, false);
-        graphics.drawString(this.font, this.playerInventoryTitle, this.inventoryLabelX, this.inventoryLabelY, TEXT, false);
+        graphics.drawString(this.font, this.playerInventoryTitle, this.inventoryLabelX, this.inventoryLabelY,
+                TEXT_DARK, false);
     }
 }

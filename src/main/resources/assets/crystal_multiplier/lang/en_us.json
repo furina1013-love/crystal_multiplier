@@ -23,5 +23,8 @@
   "gui.crystal_multiplier.per_parallel": "%s crystals = 1 parallel lane",
   "gui.crystal_multiplier.seed_invalid": "Use ×%s",
   "gui.crystal_multiplier.seed_tip": "The seed is never consumed",
-  "gui.crystal_multiplier.batch": "Items per batch: %s"
+  "gui.crystal_multiplier.batch": "Items per batch: %s",
+  "gui.crystal_multiplier.seed_size": "Seed slot: %s",
+  "gui.crystal_multiplier.speed_upgrades": "Speed cards: %s",
+  "gui.crystal_multiplier.energy_upgrades": "Energy cards: %s"
 }

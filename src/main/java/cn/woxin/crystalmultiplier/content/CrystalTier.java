@@ -6,14 +6,18 @@ import net.minecraft.util.StringRepresentable;
 
 /**
  * The four factory tiers of the crystal multiplier, mirroring Mekanism's machine tiers.
- * Higher tiers process faster, hold more energy, expose more output slots and accept
- * more Mekanism upgrade cards.
+ * Higher tiers process faster, hold more energy, expose more output slots, accept more
+ * upgrade cards and raise the stack size of the single seed slot as well as of every
+ * output slot.
+ * <p>
+ * 1.20.1 stores item counts in a signed byte (both on disk and on the wire), so no stack
+ * limit may exceed 127; the tier values below are multiples of the default lane size (16).
  */
 public enum CrystalTier implements StringRepresentable {
-    BASIC("basic", 1.0D, 2_000_000, 3, 4, 20_000, 0xFF3F76E4, ChatFormatting.GRAY),
-    ADVANCED("advanced", 2.0D, 8_000_000, 6, 6, 80_000, 0xFF3FBF6A, ChatFormatting.GREEN),
-    ELITE("elite", 4.0D, 32_000_000, 9, 8, 320_000, 0xFFB03FE4, ChatFormatting.LIGHT_PURPLE),
-    ULTIMATE("ultimate", 8.0D, 128_000_000, 12, 10, 1_280_000, 0xFFE43F3F, ChatFormatting.RED);
+    BASIC("basic", 1.0D, 200_000, 3, 4, 20_000, 64, 64, 0xFF3F76E4, ChatFormatting.GRAY),
+    ADVANCED("advanced", 2.0D, 800_000, 6, 6, 80_000, 80, 80, 0xFF3FBF6A, ChatFormatting.GREEN),
+    ELITE("elite", 4.0D, 3_200_000, 9, 8, 320_000, 96, 96, 0xFFB03FE4, ChatFormatting.LIGHT_PURPLE),
+    ULTIMATE("ultimate", 8.0D, 12_800_000, 12, 10, 1_280_000, 112, 112, 0xFFE43F3F, ChatFormatting.RED);
 
     private final String tierName;
     private final double speedMultiplier;
@@ -21,17 +25,22 @@ public enum CrystalTier implements StringRepresentable {
     private final int outputSlots;
     private final int upgradeSlots;
     private final int baseTransfer;
+    private final int seedStackLimit;
+    private final int outputStackLimit;
     private final int tint;
     private final ChatFormatting color;
 
     CrystalTier(String tierName, double speedMultiplier, int energyCapacity, int outputSlots,
-                int upgradeSlots, int baseTransfer, int tint, ChatFormatting color) {
+                int upgradeSlots, int baseTransfer, int seedStackLimit, int outputStackLimit,
+                int tint, ChatFormatting color) {
         this.tierName = tierName;
         this.speedMultiplier = speedMultiplier;
         this.energyCapacity = energyCapacity;
         this.outputSlots = outputSlots;
         this.upgradeSlots = upgradeSlots;
         this.baseTransfer = baseTransfer;
+        this.seedStackLimit = seedStackLimit;
+        this.outputStackLimit = outputStackLimit;
         this.tint = tint;
         this.color = color;
     }
@@ -68,6 +77,16 @@ public enum CrystalTier implements StringRepresentable {
     /** Maximum FE/t this tier can pull from an external energy source. */
     public int getBaseTransfer() {
         return this.baseTransfer;
+    }
+
+    /** How many crystals of one kind the single seed slot holds before upgrade cards enlarge it. */
+    public int getSeedStackLimit() {
+        return this.seedStackLimit;
+    }
+
+    /** How many items one output slot holds; higher tiers pack more into the same space. */
+    public int getOutputStackLimit() {
+        return this.outputStackLimit;
     }
 
     public int getTintColor() {

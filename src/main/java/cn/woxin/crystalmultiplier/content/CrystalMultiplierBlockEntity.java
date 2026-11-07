@@ -57,8 +57,8 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
     private static final int DATA_BATCH = 10;
     private static final int DATA_COUNT = 11;
 
-    /** Hard output slot cap, used for the space checks of every parallel lane. */
-    private static final int OUTPUT_STACK_LIMIT = 64;
+    /** No item count may exceed this: 1.20.1 stores the count in a signed byte, on disk and on the wire. */
+    public static final int MAX_STACK_COUNT = 127;
 
     private final CrystalTier tier;
     private final MachineInventory inventory;
@@ -280,7 +280,7 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
         return Math.max(1, per);
     }
 
-    /** How many items one finished batch produces right now (parallel lanes times speed cards). */
+    /** How many items one finished batch produces right now (parallel lanes times the recipe result). */
     public int getItemsPerBatch() {
         return this.itemsPerBatch;
     }
@@ -293,18 +293,21 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
                 upgrades++;
             }
         }
-        int capacity = CrystalMultiplierConfig.baseSeedCapacity()
+        int capacity = this.tier.getSeedStackLimit()
                 + CrystalMultiplierConfig.seedCapacityPerUpgrade() * upgrades;
         return Math.max(1, Math.min(CrystalMultiplierConfig.maxSeedCapacity(), capacity));
     }
 
-    public static int outputStackLimit() {
-        return OUTPUT_STACK_LIMIT;
+    /** How many items one output slot of this tier holds. */
+    public int getOutputStackLimit() {
+        return this.tier.getOutputStackLimit();
     }
 
-    /** How many of this result fit into a single output slot. */
-    private static int limitFor(ItemStack stack) {
-        return Math.max(1, Math.min(OUTPUT_STACK_LIMIT, stack.getMaxStackSize()));
+    /** How many of this result fit into a single output slot: higher tiers pack more into one slot. */
+    private int limitFor(ItemStack stack) {
+        int itemMax = stack.getMaxStackSize();
+        int limit = itemMax >= 64 ? this.tier.getOutputStackLimit() : itemMax;
+        return Math.max(1, Math.min(MAX_STACK_COUNT, limit));
     }
 
     /* ------------------------------------------------------------------ upgrades */
@@ -335,6 +338,16 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
         return 3;
     }
 
+    /** Number of inserted Mekanism speed upgrade cards (each one doubles the processing speed). */
+    public int getSpeedUpgradeCount() {
+        return this.countUpgrades(1);
+    }
+
+    /** Number of inserted Mekanism energy upgrade cards (each one halves the energy per operation). */
+    public int getEnergyUpgradeCount() {
+        return this.countUpgrades(2);
+    }
+
     public int countUpgrades(int kind) {
         int count = 0;
         for (int slot = this.getUpgradeStart(); slot < this.getUpgradeEnd(); slot++) {
@@ -359,17 +372,19 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
 
         int speedUpgrades = this.countUpgrades(1);
         int energyUpgrades = this.countUpgrades(2);
-        // Speed cards no longer shorten the batch time: they make one batch produce more items.
-        double outputFactor = 1.0D + CrystalMultiplierConfig.speedUpgradeOutputPerCard() * speedUpgrades;
-        // Energy cards never touch any buffer, they only make the machine cheaper to run.
-        double energyEfficiency = 1.0D
-                + CrystalMultiplierConfig.energyUpgradeEfficiencyPerCard() * energyUpgrades;
+        // Mekanism style upgrades: every speed card multiplies the processing speed (and with it the
+        // FE per second, so one operation still costs the same), every energy card divides the energy
+        // one operation needs. Both are multiplicative and fully configurable.
+        double speedFactor = Math.min(4096.0D,
+                Math.pow(CrystalMultiplierConfig.speedUpgradeSpeedPerCard(), speedUpgrades));
+        double energyFactor = Math.min(4096.0D,
+                Math.pow(CrystalMultiplierConfig.energyUpgradeEfficiencyFactor(), energyUpgrades));
         double baseSpeed = Math.max(0.01D, CrystalMultiplierConfig.baseSpeedMultiplier());
         double baseEnergy = Math.max(0.0001D, CrystalMultiplierConfig.baseEnergyMultiplier());
 
         CrystalMultiplicationRecipe recipe = this.findRecipe();
         ItemStack seed = this.inventory.getStackInSlot(0);
-        int perParallel = this.getCrystalsPerParallel(recipe);
+        int perParallel = Math.max(1, this.getCrystalsPerParallel(recipe));
 
         // The seed stack is the only thing that decides what and how much the machine produces.
         // It is never consumed, it may only contain one crystal kind (a single slot cannot mix items)
@@ -385,17 +400,18 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
 
         if (recipe != null && lanes > 0) {
             ItemStack result = recipe.getResultItem(this.level.registryAccess());
-            int amount = Math.max(1, (int) Math.round(result.getCount() * lanes * outputFactor));
+            int amount = Math.max(1, result.getCount() * lanes);
             this.itemsPerBatch = amount;
             if (this.canAccept(result, amount)) {
                 // Everything that changes the throughput is applied exactly once, right here:
-                // parallel lanes (seed count), speed cards (items per batch) and the tick/energy
+                // parallel lanes (seed count), speed cards (shorter batches) and the tick/energy
                 // scaling of the tier. Nothing is applied a second time anywhere else.
                 int ticks = Math.max(1, (int) Math.round(recipe.getTicks()
-                        / (this.tier.getSpeedMultiplier() * baseSpeed)));
-                // Energy scales with the extra output of the speed cards, so one crystal always costs the same.
-                int costPerTick = Math.max(1, (int) Math.round(recipe.getEnergyPerTick() * lanes * outputFactor
-                        * this.tier.getSpeedMultiplier() * baseSpeed * baseEnergy / energyEfficiency));
+                        / (this.tier.getSpeedMultiplier() * baseSpeed * speedFactor)));
+                // Same energy per operation at every tier and with any number of speed cards: the faster
+                // the machine runs, the more FE it draws per tick, but one crystal always costs the same.
+                int costPerTick = Math.max(1, (int) Math.round(recipe.getEnergyPerTick() * lanes
+                        * this.tier.getSpeedMultiplier() * baseSpeed * speedFactor * baseEnergy / energyFactor));
                 if (CrystalMultiplierConfig.oneTickOutput()) {
                     // Optional global switch: one finished batch per tick, but the whole FE cost of that
                     // operation is paid inside that single tick, so the cost per crystal never changes.
@@ -634,16 +650,25 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
             if (slot == CrystalMultiplierBlockEntity.this.getSeedSlot()) {
                 return CrystalMultiplierBlockEntity.this.getSeedCapacity();
             }
-            return OUTPUT_STACK_LIMIT;
+            if (slot >= CrystalMultiplierBlockEntity.this.getOutputStart()
+                    && slot < CrystalMultiplierBlockEntity.this.getOutputEnd()) {
+                return CrystalMultiplierBlockEntity.this.getOutputStackLimit();
+            }
+            // One upgrade card per upgrade slot, otherwise counting the cards would lie.
+            return 1;
         }
 
         @Override
         public int getStackLimit(int slot, ItemStack stack) {
             if (slot == CrystalMultiplierBlockEntity.this.getSeedSlot()) {
-                // The seed slot deliberately ignores the vanilla 64 item cap so upgrades can raise it.
+                // The seed slot deliberately ignores the vanilla 64 item cap so upgrades/tiers can raise it.
                 return CrystalMultiplierBlockEntity.this.getSeedCapacity();
             }
-            return Math.min(getSlotLimit(slot), stack.getMaxStackSize());
+            if (slot >= CrystalMultiplierBlockEntity.this.getOutputStart()
+                    && slot < CrystalMultiplierBlockEntity.this.getOutputEnd()) {
+                return CrystalMultiplierBlockEntity.this.limitFor(stack);
+            }
+            return 1;
         }
 
         @Override

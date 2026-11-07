@@ -13,14 +13,13 @@ public final class CrystalMultiplierConfig {
     public static final ForgeConfigSpec SPEC;
 
     public static final ForgeConfigSpec.IntValue CRYSTALS_PER_PARALLEL;
-    public static final ForgeConfigSpec.IntValue BASE_SEED_CAPACITY;
     public static final ForgeConfigSpec.IntValue SEED_CAPACITY_PER_UPGRADE;
     public static final ForgeConfigSpec.IntValue MAX_SEED_CAPACITY;
     public static final ForgeConfigSpec.IntValue MAX_PARALLEL;
     public static final ForgeConfigSpec.DoubleValue BASE_SPEED_MULTIPLIER;
     public static final ForgeConfigSpec.DoubleValue BASE_ENERGY_MULTIPLIER;
-    public static final ForgeConfigSpec.DoubleValue SPEED_UPGRADE_OUTPUT_PER_CARD;
-    public static final ForgeConfigSpec.DoubleValue ENERGY_UPGRADE_EFFICIENCY_PER_CARD;
+    public static final ForgeConfigSpec.DoubleValue SPEED_UPGRADE_SPEED_PER_CARD;
+    public static final ForgeConfigSpec.DoubleValue ENERGY_UPGRADE_EFFICIENCY_FACTOR;
     public static final ForgeConfigSpec.BooleanValue ONE_TICK_OUTPUT;
 
     static {
@@ -33,18 +32,16 @@ public final class CrystalMultiplierConfig {
                         "A single recipe may override it with its own \"crystals_per_parallel\" field.")
                 .defineInRange("crystalsPerParallel", 16, 1, 64);
 
-        BASE_SEED_CAPACITY = builder
-                .comment("Seed slot capacity of a machine without any upgrade card.")
-                .defineInRange("baseSeedCapacity", 64, 1, 127);
-
         SEED_CAPACITY_PER_UPGRADE = builder
-                .comment("Extra seed slot capacity granted by every upgrade card inserted into an upgrade slot.")
-                .defineInRange("seedCapacityPerUpgrade", 16, 0, 127);
+                .comment("Extra seed slot capacity granted by every speed or energy upgrade card inserted",
+                        "into an upgrade slot. The tier already sets the base capacity of the single seed slot.")
+                .defineInRange("seedCapacityPerUpgrade", 16, 0, 32);
 
         MAX_SEED_CAPACITY = builder
                 .comment("Hard upper bound of the seed slot capacity.",
-                        "64 is the vanilla safe maximum, 1.20.1 keeps the stack count in a signed byte so 127 is the absolute limit.")
-                .defineInRange("maxSeedCapacity", 64, 1, 127);
+                        "Each tier already brings its own base capacity (64 / 80 / 96 / 112),",
+                        "1.20.1 keeps the stack count in a signed byte so 127 is the absolute limit.")
+                .defineInRange("maxSeedCapacity", 127, 1, 127);
 
         MAX_PARALLEL = builder
                 .comment("Upper bound of parallel lanes a single machine may run.")
@@ -62,16 +59,16 @@ public final class CrystalMultiplierConfig {
                         "so lowering it is the cheapest way to make the machine lazy friendly.")
                 .defineInRange("baseEnergyMultiplier", 0.5D, 0.01D, 64.0D);
 
-        SPEED_UPGRADE_OUTPUT_PER_CARD = builder
-                .comment("mekanism:upgrade_speed no longer shortens the batch time; every card adds this much",
-                        "extra output per finished batch (0.5 = +50% items, 2 cards = 2x items).",
-                        "Energy per tick scales with the extra output, so the FE cost per crystal stays constant.")
-                .defineInRange("speedUpgradeOutputPerCard", 0.5D, 0.0D, 64.0D);
+        SPEED_UPGRADE_SPEED_PER_CARD = builder
+                .comment("Mekanism style speed card: every card multiplies the processing speed by this factor",
+                        "(2.0 = each card halves the time one batch needs) and raises the FE per tick by the",
+                        "same factor, so one operation always costs the same amount of energy.")
+                .defineInRange("speedUpgradeSpeedPerCard", 2.0D, 1.0D, 16.0D);
 
-        ENERGY_UPGRADE_EFFICIENCY_PER_CARD = builder
-                .comment("mekanism:upgrade_energy keeps reducing the energy cost instead of touching any buffer:",
-                        "every card multiplies the energy efficiency by (1 + this value).")
-                .defineInRange("energyUpgradeEfficiencyPerCard", 0.5D, 0.0D, 64.0D);
+        ENERGY_UPGRADE_EFFICIENCY_FACTOR = builder
+                .comment("Mekanism style energy card: every card divides the energy one operation needs by this",
+                        "factor (2.0 = each card halves the FE cost). Energy cards never touch any energy buffer.")
+                .defineInRange("energyUpgradeEfficiencyFactor", 2.0D, 1.0D, 16.0D);
 
         ONE_TICK_OUTPUT = builder
                 .comment("Global switch: when true every machine finishes one output batch per tick,",
@@ -114,16 +111,12 @@ public final class CrystalMultiplierConfig {
         return intOr(CRYSTALS_PER_PARALLEL, 16);
     }
 
-    public static int baseSeedCapacity() {
-        return intOr(BASE_SEED_CAPACITY, 64);
-    }
-
     public static int seedCapacityPerUpgrade() {
         return intOr(SEED_CAPACITY_PER_UPGRADE, 16);
     }
 
     public static int maxSeedCapacity() {
-        return intOr(MAX_SEED_CAPACITY, 64);
+        return intOr(MAX_SEED_CAPACITY, 127);
     }
 
     public static int maxParallel() {
@@ -138,12 +131,12 @@ public final class CrystalMultiplierConfig {
         return doubleOr(BASE_ENERGY_MULTIPLIER, 0.5D);
     }
 
-    public static double speedUpgradeOutputPerCard() {
-        return doubleOr(SPEED_UPGRADE_OUTPUT_PER_CARD, 0.5D);
+    public static double speedUpgradeSpeedPerCard() {
+        return doubleOr(SPEED_UPGRADE_SPEED_PER_CARD, 2.0D);
     }
 
-    public static double energyUpgradeEfficiencyPerCard() {
-        return doubleOr(ENERGY_UPGRADE_EFFICIENCY_PER_CARD, 0.5D);
+    public static double energyUpgradeEfficiencyFactor() {
+        return doubleOr(ENERGY_UPGRADE_EFFICIENCY_FACTOR, 2.0D);
     }
 
     public static boolean oneTickOutput() {
