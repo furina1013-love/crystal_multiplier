@@ -63,8 +63,7 @@
 | `maxParallel` | 64 | 单机并行上限 |
 | `baseSpeedMultiplier` | 4.0 | 全局基础速度倍率（越高越快，耗能同比上升） |
 | `baseEnergyMultiplier` | **0.5** | 全局基础能耗倍率（0.5 = 所有操作耗能减半） |
-| `speedUpgradeSpeedPerCard` | **2.0** | Mek 式速度卡：每张卡的加速度倍率（2.0 = 每张卡批次时间减半） |
-| `energyUpgradeEfficiencyFactor` | **2.0** | Mek 式能量卡：每张卡的省电倍率（2.0 = 每张卡耗能减半） |
+| `maxUpgradeMultiplier` | **10** | 与 Mekanism 自己的 `general.maxUpgradeMultiplier` 完全同款：升级效果 = 该值 ^ (已装卡数 / 可装卡数)，10 就是 Mek 官方默认值 |
 | `oneTickOutput` | **false** | 全局开关：每 1 tick 完成一次输出（单次操作的总 FE 在该 tick 内一次扣完） |
 
 每个键都带翻译键（`crystal_multiplier.configuration.machine.<键名>` 与同名 `.tooltip`），段标题是
@@ -73,13 +72,38 @@
 
 ## 升级卡效果（Mekanism 语义）
 
-- `mekanism:upgrade_speed`：**提速**。每张卡把批次时间 ÷2（连乘，2 张 = 4 倍速，3 张 = 8 倍速），
-  每 tick 耗能同倍上升，所以**每颗水晶的 FE 成本不变**；倍率上限 4096 倍。
-- `mekanism:upgrade_energy`：**省电**。每张卡把单次操作耗能 ÷2（连乘，2 张 = 1/4 耗能），
-  **完全不碰能量缓存**（能量槽只由档位决定）；倍率上限同样是 4096 倍。
+升级算法直接采用 Mekanism 本体的公式（Mekanism 10 的 `MekanismUtils#getTicks` / `#getEnergyPerTick`），
+底数是 Mekanism 自己的配置项 `maxUpgradeMultiplier`（默认 10），本模组用同名配置键 `maxUpgradeMultiplier` 对齐：
+
+- `fraction = 已装卡数 / Upgrade#getMax()`（速度与能量可装数都是 8）
+- 批次耗时 = 基础耗时 × 底数 ^ (−fraction速度)
+- 每 tick 耗能 = 基础耗能 × 底数 ^ (2 × fraction速度 − fraction能量)
+
+也就是说：
+
+- `mekanism:upgrade_speed`：**超频**。8 张满卡把批次时间压到 1/10，但每 tick 耗能涨到 100 倍——
+  和 Mek 机器一样，速度不是免费的，每颗水晶反而更贵（1 张卡 ≈ 1.33 倍价，8 张 = 10 倍价）。
+- `mekanism:upgrade_energy`：**省电**。8 张满卡把每 tick 耗能压到 1/10，**完全不碰能量缓存**
+  （能量槽只由档位决定，这是你之前明确要求的行为）；8 张速度 + 8 张能量正好回到原价。
+- 速度卡的耗能上涨由「按电量比例推进」兜住：一 tick 需要的电超过缓存时机器按比例降速，不会憋死。
 - 任意升级卡：每张都给种子槽 **+16 容量**，多插卡 = 能放更多水晶 = 更多并行。
 - 卡是可叠的：一个升级槽里最多放 8 张同种卡，两张卡叠一槽与插两个槽效果完全相同；超出 `Upgrade#getMax()` 会被拒绝放入。
 - 其它升级卡（muffling/gas/filter/anchor…）可放入，不影响水晶增殖逻辑本身。
+
+## 机器合成（Mekanism 同款配方结构）
+
+四台机器的合成配方与 Mekanism 自己的机器配方**完全同一套写法**（对照 `mekanism:enrichment_chamber`）：
+图案 `ACA / IXI / ACA`，A = Mekanism 合金标签，C = Forge 电路标签，I = 锭标签，X = 钢机壳或上一档机器。
+
+| 档位 | A（合金标签） | C（电路标签） | I（锭标签） | X（核心） |
+| --- | --- | --- | --- | --- |
+| 基础 | `#mekanism:alloys/basic`（红石） | `#forge:circuits/basic` | `#forge:ingots/iron` | `mekanism:steel_casing` |
+| 高级 | `#mekanism:alloys/infused` | `#forge:circuits/advanced` | `#forge:ingots/osmium` | 基础档机器 |
+| 精英 | `#mekanism:alloys/reinforced` | `#forge:circuits/elite` | `#forge:ingots/refined_obsidian` | 高级档机器 |
+| 终极 | `#mekanism:alloys/atomic` | `#forge:circuits/ultimate` | `#forge:ingots/refined_obsidian` | 精英档机器 |
+
+用的全部是标签而不是具体物品 id，所以换成别的合金 / 电路（KubeJS、其它附属提供的同标签物品）也能正常合成；
+`forge:circuits/*` 与 `mekanism:alloys/*` 这两个标签本身就是 Mekanism 提供的，不额外引入依赖。
 
 ## 配方机制
 
@@ -106,12 +130,15 @@
 
 | 升级卡 | 每批次产出 | 单次耗时 | 每 tick 耗能 | FE/颗 |
 | --- | --- | --- | --- | --- |
-| 无 | 8 | 2.5 s | 1,600 | 10,000 |
-| 2× 速度 | 8 | 0.65 s | 6,400 | ≈10,400（取整） |
-| 2× 能量 | 8 | 2.5 s | 400 | 2,500 |
-| 2× 速度 + 2× 能量 | 8 | 0.65 s | 1,600 | ≈2,600（取整） |
+| 无 | 8 | 2.5 s（50 tick） | 1,600 | 10,000 |
+| 2× 速度 | 8 | 1.4 s（28 tick） | 5,060 | ≈17,700 |
+| 8× 速度（满） | 8 | 0.25 s（5 tick） | 160,000 | 100,000 |
+| 2× 能量 | 8 | 2.5 s（50 tick） | 900 | 5,625 |
+| 8× 能量（满） | 8 | 2.5 s（50 tick） | 160 | 1,000 |
+| 8× 速度 + 8× 能量 | 8 | 0.25 s（5 tick） | 16,000 | 10,000 |
 
-终极档（8× 速度）同样 64 颗种子：每批次 8 个、单次 0.3 s、每 tick 12,800 FE，FE/颗约 9,600（tick 取整）。
+终极档（档位自带 8 倍速）同样 64 颗种子：每批次 8 个、单次 0.3 s（6 tick）、每 tick 12,800 FE，FE/颗 9,600；
+再叠 8 张速度卡就是 1 tick 一批、每 tick 1,280,000 FE、FE/颗 160,000（纯超频，不建议除非电量管够）。
 
 ## 界面
 
@@ -131,7 +158,7 @@
 ```bash
 export JAVA_HOME=/path/to/jdk-17   # 需要 JDK 17
 ./gradlew build
-# 产物：build/libs/crystal_multiplier-1.3.0.jar
+# 产物：build/libs/crystal_multiplier-1.4.0.jar
 ```
 
 AE2 的物品只用注册名（`ae2:certus_quartz_crystal` 等）与标签访问，不需要 AE2 的类；Mekanism 只用到升级卡的公开接口
@@ -148,6 +175,11 @@ AE2 的物品只用注册名（`ae2:certus_quartz_crystal` 等）与标签访问
 
 ## 更新记录
 
+- **1.4.0**：升级与配方按 Mekanism 官方文档对齐。升级算法改成 **Mekanism 本体公式**
+  （`fraction = 已装 / Upgrade#getMax()`，耗时 × 底数^(−fraction速度)，耗能 × 底数^(2×fraction速度 − fraction能量)），
+  底数就是 Mekanism 自己的 `maxUpgradeMultiplier`（默认 10），本模组用同名配置键而不是自造倍率；
+  机器合成配方改成 **Mekanism 机器同款结构**（`#mekanism:alloys/*` + `#forge:circuits/*` + 锭标签 + 钢机壳 / 上一档机器）；
+  因此旧的 `speedUpgradeSpeedPerCard`、`energyUpgradeEfficiencyFactor` 两个配置键被 `maxUpgradeMultiplier` 取代。
 - **1.3.0**：升级卡改用 **Mekanism 官方接口**（`mekanism.api.Upgrade` / `IUpgradeItem`，卡的注册名与 Mek 完全一致，同种上限即 `Upgrade#getMax()` = 8 张），速度 / 能量卡可在**同一个槽内叠放**（叠 2 张等于插 2 张）；
   新增**按电量比例推进**的降速处理，避免叠太多速度卡把机器憋死；修正界面槽位坐标（种子槽 / 输出槽 / 升级槽 / 玩家背包全部对齐新底图）；
   修正 **Shift 点击**：输出槽一次抽空、种子槽整栈放入（不再卡在 127）；配置项补上段标题与 9 个选项的翻译键，Configured / Forge Config Screens 能直接显示中文名称与说明，改动即时生效。

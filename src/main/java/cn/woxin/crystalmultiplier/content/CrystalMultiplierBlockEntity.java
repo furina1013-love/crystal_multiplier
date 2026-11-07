@@ -374,12 +374,12 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
         return 3;
     }
 
-    /** Number of inserted Mekanism speed upgrade cards (each one doubles the processing speed). */
+    /** Number of inserted Mekanism speed upgrade cards (8 cards = ten times the speed by default). */
     public int getSpeedUpgradeCount() {
         return this.countUpgrades(1);
     }
 
-    /** Number of inserted Mekanism energy upgrade cards (each one halves the energy per operation). */
+    /** Number of inserted Mekanism energy upgrade cards (8 cards = a tenth of the FE per tick by default). */
     public int getEnergyUpgradeCount() {
         return this.countUpgrades(2);
     }
@@ -409,13 +409,20 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
 
         int speedUpgrades = this.countUpgrades(1);
         int energyUpgrades = this.countUpgrades(2);
-        // Mekanism style upgrades: every speed card multiplies the processing speed (and with it the
-        // FE per second, so one operation still costs the same), every energy card divides the energy
-        // one operation needs. Both are multiplicative and fully configurable.
-        double speedFactor = Math.min(4096.0D,
-                Math.pow(CrystalMultiplierConfig.speedUpgradeSpeedPerCard(), speedUpgrades));
-        double energyFactor = Math.min(4096.0D,
-                Math.pow(CrystalMultiplierConfig.energyUpgradeEfficiencyFactor(), energyUpgrades));
+        // Mekanism's own upgrade maths (MekanismUtils#getTicks and #getEnergyPerTick in Mekanism 10):
+        //   fraction      = installed / Upgrade#getMax()            (8 for both speed and energy)
+        //   ticks         = base ticks  * multiplier ^ (-fractionSpeed)
+        //   energyPerTick = base energy * multiplier ^ (2 * fractionSpeed - fractionEnergy)
+        // multiplier is Mekanism's own config option "maxUpgradeMultiplier" (default 10). Eight speed
+        // cards therefore make the machine ten times faster while drawing a hundred times the FE per
+        // tick, and eight energy cards cut the FE per tick to a tenth - same behaviour as a Mekanism
+        // machine, including the fact that speed is an overclock and not a free lunch.
+        double upgradeMultiplier = Math.max(1.0D, CrystalMultiplierConfig.maxUpgradeMultiplier());
+        double fractionSpeed = (double) speedUpgrades / (double) Upgrade.SPEED.getMax();
+        double fractionEnergy = (double) energyUpgrades / (double) Upgrade.ENERGY.getMax();
+        double speedFactor = Math.min(4096.0D, Math.pow(upgradeMultiplier, fractionSpeed));
+        double energyUpgradeFactor = Math.min(1_048_576.0D,
+                Math.pow(upgradeMultiplier, 2.0D * fractionSpeed - fractionEnergy));
         double baseSpeed = Math.max(0.01D, CrystalMultiplierConfig.baseSpeedMultiplier());
         double baseEnergy = Math.max(0.0001D, CrystalMultiplierConfig.baseEnergyMultiplier());
 
@@ -447,10 +454,11 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
                 // scaling of the tier. Nothing is applied a second time anywhere else.
                 int ticks = Math.max(1, (int) Math.round(recipe.getTicks()
                         / (this.tier.getSpeedMultiplier() * baseSpeed * speedFactor)));
-                // Same energy per operation at every tier and with any number of speed cards: the faster
-                // the machine runs, the more FE it draws per tick, but one crystal always costs the same.
+                // The tier and the base speed appear in the numerator and in the denominator, so the FE
+                // one operation needs stays constant across tiers; only the Mekanism upgrade factor
+                // changes the price of a crystal (speed cards make it more expensive, energy cards cheaper).
                 int costPerTick = Math.max(1, (int) Math.round(recipe.getEnergyPerTick() * lanes
-                        * this.tier.getSpeedMultiplier() * baseSpeed * speedFactor * baseEnergy / energyFactor));
+                        * this.tier.getSpeedMultiplier() * baseSpeed * baseEnergy * energyUpgradeFactor));
                 if (CrystalMultiplierConfig.oneTickOutput()) {
                     // Optional global switch: one finished batch per tick, but the whole FE cost of that
                     // operation is paid inside that single tick, so the cost per crystal never changes.

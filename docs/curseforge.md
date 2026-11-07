@@ -60,19 +60,35 @@ Cards are recognised through Mekanisms official API (`mekanism.api.Upgrade` plus
 and the per-kind limit is taken straight from `Upgrade#getMax()` (8 for speed and energy). Cards stack inside a single upgrade slot just like in a Mekanism machine:
 2 speed cards in one slot behave exactly like 1 card in each of two slots and anything above the limit is refused.
 
-In short: speed cards make the *same job faster* (higher draw per tick, same total cost), energy cards make it *cheaper*, and every card lets you *stack more seeds*.
-Both card types stack multiplicatively (up to 4096x) and both are configurable (default x2 per card).
+The maths is Mekanism's own (the `MekanismUtils#getTicks` / `#getEnergyPerTick` formulas from Mekanism 10), with Mekanism's
+`maxUpgradeMultiplier` config value (default 10) as the base - this mod exposes the same key under the same name:
+
+- `fraction = installed cards / Upgrade#getMax()` (8 for both speed and energy)
+- batch time = base time x multiplier ^ (-fraction_speed)
+- FE per tick = base FE x multiplier ^ (2 * fraction_speed - fraction_energy)
+
+In short: speed cards are an *overclock* (8 cards = 10x faster but 100x the draw per tick, exactly like a Mekanism machine),
+energy cards make the job *cheaper* (8 cards = a tenth of the draw), and every card lets you *stack more seeds*.
+The extra draw of overclocked machines is handled by proportional throttling: when one tick costs more than the internal
+buffer holds, the machine simply runs proportionally slower instead of stalling.
 
 ---
 
 ## Crafting
 
-The machine uses a Mekanism-style casing (steel casing + glass + iron ingots), upgrading tier by tier:
+The recipes use exactly the same layout as Mekanism's own machines (compare `mekanism:enrichment_chamber`):
+pattern `ACA / IXI / ACA`, where A = a Mekanism alloy tag, C = a Forge circuit tag, I = an ingot tag and
+X = a steel casing or the previous tier machine.
 
-- **Basic**: 3x3 ring of iron ingots (`#forge:ingots/iron`) and glass (`#forge:glass`) around a **Steel Casing**.
-- **Advanced**: iron replaced with **Infused Alloy Ingots**, four corners = Basic machine, center = Steel Casing.
-- **Elite**: alloy replaced with **Reinforced Alloy Ingots**, four corners = Advanced machine.
-- **Ultimate**: alloy replaced with **Atomic Alloy Ingots**, four corners = Elite machine.
+| Tier | A (alloy) | C (circuit) | I (ingot) | X (core) |
+| --- | --- | --- | --- | --- |
+| Basic | `#mekanism:alloys/basic` (redstone) | `#forge:circuits/basic` | `#forge:ingots/iron` | `mekanism:steel_casing` |
+| Advanced | `#mekanism:alloys/infused` | `#forge:circuits/advanced` | `#forge:ingots/osmium` | Basic machine |
+| Elite | `#mekanism:alloys/reinforced` | `#forge:circuits/elite` | `#forge:ingots/refined_obsidian` | Advanced machine |
+| Ultimate | `#mekanism:alloys/atomic` | `#forge:circuits/ultimate` | `#forge:ingots/refined_obsidian` | Elite machine |
+
+Everything is tag based, so KubeJS or other addons that register their own alloys/circuits under the same tags work too;
+both tag families are shipped by Mekanism itself, so no extra dependency is pulled in.
 
 ---
 
@@ -119,8 +135,7 @@ Note: ExtendedAE for 1.20.1 (modid `expatternprovider`) does not ship `entro_cry
 | `maxParallel` | 64 | Parallel lane cap per machine |
 | `baseSpeedMultiplier` | 4.0 | Global base speed multiplier (raises FE/t, total cost stays the same) |
 | `baseEnergyMultiplier` | 0.5 | Global base energy multiplier (0.5 = half cost) |
-| `speedUpgradeSpeedPerCard` | 2.0 | Speed multiplier per speed card (2.0 = half batch time) |
-| `energyUpgradeEfficiencyFactor` | 2.0 | Energy divisor per energy card (2.0 = half energy) |
+| `maxUpgradeMultiplier` | 10 | Same option as Mekanism's `general.maxUpgradeMultiplier`: effect = value ^ (installed / possible) |
 | `oneTickOutput` | false | Finish one batch every tick (cheat-level, off by default) |
 
 Every key carries translation keys (`crystal_multiplier.configuration.machine.<key>` plus a matching `.tooltip`, section title
@@ -133,12 +148,15 @@ names and descriptions, and all values are re-read at runtime so a change applie
 
 | Upgrades | Items per batch | Batch time | Draw | FE per crystal |
 | --- | --- | --- | --- | --- |
-| none | 8 | 2.5 s | 1,600 FE/t | 10,000 |
-| 2x speed | 8 | 0.65 s | 6,400 FE/t | ~10,400 (tick rounding) |
-| 2x energy | 8 | 2.5 s | 400 FE/t | 2,500 |
-| 2x speed + 2x energy | 8 | 0.65 s | 1,600 FE/t | ~2,600 (tick rounding) |
+| none | 8 | 2.5 s (50 ticks) | 1,600 FE/t | 10,000 |
+| 2x speed | 8 | 1.4 s (28 ticks) | 5,060 FE/t | ~17,700 |
+| 8x speed (max) | 8 | 0.25 s (5 ticks) | 160,000 FE/t | 100,000 |
+| 2x energy | 8 | 2.5 s (50 ticks) | 900 FE/t | 5,625 |
+| 8x energy (max) | 8 | 2.5 s (50 ticks) | 160 FE/t | 1,000 |
+| 8 speed + 8 energy | 8 | 0.25 s (5 ticks) | 16,000 FE/t | 10,000 |
 
-Ultimate tier with the same 64 seeds: 8 items every 0.3 s at 12,800 FE/t, roughly 9,600 FE per crystal.
+Ultimate tier with the same 64 seeds: 8 items every 0.3 s (6 ticks) at 12,800 FE/t, 9,600 FE per crystal;
+adding 8 speed cards makes it one batch per tick at 1,280,000 FE/t (160,000 FE per crystal - pure overclock).
 
 Ultimate tier fully loaded with 512 seeds = 32 lanes: 64 items every 0.3 s at 102,400 FE/t (measured in-game).
 
@@ -163,6 +181,12 @@ progress arrow inside the machine opens the matching recipe.
 
 ## Changelog
 
+- **1.4.0** — Upgrades and crafting follow Mekanisms official conventions now. The upgrade maths is Mekanism's own
+  (batch time x multiplier ^ (-fraction_speed), FE per tick x multiplier ^ (2 * fraction_speed - fraction_energy),
+  fraction = installed / `Upgrade#getMax()`), with Mekanism's `maxUpgradeMultiplier` (default 10) as the base; the old
+  `speedUpgradeSpeedPerCard` and `energyUpgradeEfficiencyFactor` keys are replaced by `maxUpgradeMultiplier`.
+  Machine recipes were rewritten to Mekanism's machine layout (alloy tag + circuit tag + ingot tag + steel casing /
+  previous tier machine).
 - **1.3.0** — Upgrade cards now go through Mekanisms official API (`mekanism.api.Upgrade` / `IUpgradeItem`, per-kind limit `Upgrade#getMax()` = 8) and stack inside one slot;
   added proportional throttling so an overclocked machine never stalls dead when one tick costs more FE than the buffer holds; fixed GUI slot coordinates and shift click
   (output slots empty in one go, seed stacks move entirely instead of stopping at 127); every config key got a section title and translation keys so Configured and

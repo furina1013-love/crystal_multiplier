@@ -2,18 +2,21 @@
   "type": "minecraft:crafting_shaped",
   "pattern": [
     "ACA",
-    "CMC",
+    "IXI",
     "ACA"
   ],
   "key": {
     "A": {
-      "item": "mekanism:alloy_infused"
+      "tag": "mekanism:alloys/infused"
     },
     "C": {
-      "item": "crystal_multiplier:crystal_multiplier"
+      "tag": "forge:circuits/advanced"
     },
-    "M": {
-      "item": "mekanism:steel_casing"
+    "I": {
+      "tag": "forge:ingots/osmium"
+    },
+    "X": {
+      "item": "crystal_multiplier:crystal_multiplier"
     }
   },
   "result": {

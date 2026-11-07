@@ -26,8 +26,7 @@ public final class CrystalMultiplierConfig {
     public static final ForgeConfigSpec.IntValue MAX_PARALLEL;
     public static final ForgeConfigSpec.DoubleValue BASE_SPEED_MULTIPLIER;
     public static final ForgeConfigSpec.DoubleValue BASE_ENERGY_MULTIPLIER;
-    public static final ForgeConfigSpec.DoubleValue SPEED_UPGRADE_SPEED_PER_CARD;
-    public static final ForgeConfigSpec.DoubleValue ENERGY_UPGRADE_EFFICIENCY_FACTOR;
+    public static final ForgeConfigSpec.IntValue MAX_UPGRADE_MULTIPLIER;
     public static final ForgeConfigSpec.BooleanValue ONE_TICK_OUTPUT;
 
     static {
@@ -77,18 +76,16 @@ public final class CrystalMultiplierConfig {
                 .translation(LANG_PREFIX + ".baseEnergyMultiplier")
                 .defineInRange("baseEnergyMultiplier", 0.5D, 0.01D, 64.0D);
 
-        SPEED_UPGRADE_SPEED_PER_CARD = builder
-                .comment("Mekanism style speed card: every card multiplies the processing speed by this factor",
-                        "(2.0 = each card halves the time one batch needs) and raises the FE per tick by the",
-                        "same factor, so one operation always costs the same amount of energy.")
-                .translation(LANG_PREFIX + ".speedUpgradeSpeedPerCard")
-                .defineInRange("speedUpgradeSpeedPerCard", 2.0D, 1.0D, 16.0D);
-
-        ENERGY_UPGRADE_EFFICIENCY_FACTOR = builder
-                .comment("Mekanism style energy card: every card divides the energy one operation needs by this",
-                        "factor (2.0 = each card halves the FE cost). Energy cards never touch any energy buffer.")
-                .translation(LANG_PREFIX + ".energyUpgradeEfficiencyFactor")
-                .defineInRange("energyUpgradeEfficiencyFactor", 2.0D, 1.0D, 16.0D);
+        MAX_UPGRADE_MULTIPLIER = builder
+                .comment("Same option as Mekanism's own general.maxUpgradeMultiplier: the base factor used to",
+                        "work out machine performance with upgrades, applied as",
+                        "multiplier ^ (upgrades installed / upgrades possible).",
+                        "With 10 (the Mekanism default) eight speed cards make the machine ten times faster,",
+                        "and eight energy cards cut the FE per tick to a tenth.",
+                        "Speed cards also raise the FE per tick by multiplier ^ (2 * fraction), which is exactly",
+                        "what a Mekanism machine does - speed is an overclock, not a free lunch.")
+                .translation(LANG_PREFIX + ".maxUpgradeMultiplier")
+                .defineInRange("maxUpgradeMultiplier", 10, 1, 1000);
 
         ONE_TICK_OUTPUT = builder
                 .comment("Global switch: when true every machine finishes one output batch per tick,",
@@ -152,12 +149,8 @@ public final class CrystalMultiplierConfig {
         return doubleOr(BASE_ENERGY_MULTIPLIER, 0.5D);
     }
 
-    public static double speedUpgradeSpeedPerCard() {
-        return doubleOr(SPEED_UPGRADE_SPEED_PER_CARD, 2.0D);
-    }
-
-    public static double energyUpgradeEfficiencyFactor() {
-        return doubleOr(ENERGY_UPGRADE_EFFICIENCY_FACTOR, 2.0D);
+    public static int maxUpgradeMultiplier() {
+        return intOr(MAX_UPGRADE_MULTIPLIER, 10);
     }
 
     public static boolean oneTickOutput() {

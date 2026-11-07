@@ -57,19 +57,32 @@
 同种卡的数量上限直接取自 `Upgrade#getMax()`（速度 / 能量都是 **8 张**）。卡可以像 Mek 机器里一样**叠在同一个槽内**：
 一个槽放 2 张速度卡，与两个槽各放 1 张效果完全相同，超出上限会被拒绝放入。
 
-通俗点说：**速度卡 = 同样的活干得更快（每 tick 电费上升、单次总电费不变），能量卡 = 同样的活更省电，多插卡 = 能塞更多水晶**。
-两种卡都是连乘（倍率上限 4096 倍），并且都能在配置里改（默认每张 ×2）。
+算法用 **Mekanism 本体公式**（Mekanism 10 的 `MekanismUtils#getTicks` / `#getEnergyPerTick`），底数就是 Mekanism 自己的
+配置项 `maxUpgradeMultiplier`（默认 10），本模组用同名配置键对齐：
+
+- `fraction = 已装卡数 / Upgrade#getMax()`（速度、能量都是 8）
+- 批次耗时 = 基础耗时 × 底数^(−fraction速度)
+- 每 tick 耗能 = 基础耗能 × 底数^(2×fraction速度 − fraction能量)
+
+通俗点说：**速度卡 = 超频（8 张满卡快 10 倍，但每 tick 电费 ×100，和 Mek 机器一样不是免费的），
+能量卡 = 省电（8 张满卡把每 tick 电费压到 1/10），多插卡 = 能塞更多水晶**。速度卡带来的高耗电由「按电量比例推进」兜住，
+一 tick 需要的电超过缓存时机器按比例降速，不会憋死。
 
 ---
 
 ## 五、机器合成
 
-外形为 Mekanism 风格的机器外壳（钢机壳 + 玻璃 + 铁锭），四档逐级升级：
+配方与 Mekanism 自己的机器**同一套写法**（对照 `mekanism:enrichment_chamber`）：图案 `ACA / IXI / ACA`，
+A = Mekanism 合金标签、C = Forge 电路标签、I = 锭标签、X = 钢机壳或上一档机器。
 
-- 基础：3×3 内环为 铁锭(#forge:ingots/iron)、玻璃(#forge:glass)，中间放 **钢机壳**（mekanism:steel_casing）
-- 高级：铁锭位置换成 **灌注合金锭**，四角放 **基础机**，中间钢机壳
-- 精英：合金换成 **强化合金锭**，四角放 **高级机**，中间钢机壳
-- 终极：合金换成 **原子合金锭**，四角放 **精英机**，中间钢机壳
+| 档位 | A 合金 | C 电路 | I 锭 | X 核心 |
+| --- | --- | --- | --- | --- |
+| 基础 | `#mekanism:alloys/basic`（红石） | `#forge:circuits/basic` | `#forge:ingots/iron` | `mekanism:steel_casing` |
+| 高级 | `#mekanism:alloys/infused` | `#forge:circuits/advanced` | `#forge:ingots/osmium` | 基础档机器 |
+| 精英 | `#mekanism:alloys/reinforced` | `#forge:circuits/elite` | `#forge:ingots/refined_obsidian` | 高级档机器 |
+| 终极 | `#mekanism:alloys/atomic` | `#forge:circuits/ultimate` | `#forge:ingots/refined_obsidian` | 精英档机器 |
+
+全部用标签而不是具体物品 id：换成 KubeJS / 其它附属的同类合金、电路也能合成；这两个标签本身就是 Mekanism 提供的，不额外引入依赖。
 
 ---
 
@@ -116,8 +129,7 @@
 | `maxParallel` | 64 | 单机并行上限 |
 | `baseSpeedMultiplier` | 4.0 | 全局基础速度倍率（提高会同步提高耗电/t，单次总电费不变） |
 | `baseEnergyMultiplier` | 0.5 | 全局基础耗电倍率（0.5 = 耗电减半） |
-| `speedUpgradeSpeedPerCard` | 2.0 | 每张速度卡的加速度倍率（2.0 = 批次时间减半） |
-| `energyUpgradeEfficiencyFactor` | 2.0 | 每张能量卡的省电倍率（2.0 = 耗电减半） |
+| `maxUpgradeMultiplier` | 10 | 与 Mekanism 的 `general.maxUpgradeMultiplier` 同款：效果 = 该值^(已装/可装) |
 | `oneTickOutput` | false | 每 1 tick 完成一次输出（作弊级速度，默认关闭） |
 
 每个键都带翻译键（`crystal_multiplier.configuration.machine.<键名>` 与同名 `.tooltip`，段标题是 `crystal_multiplier.configuration.machine`），
@@ -129,12 +141,15 @@
 
 | 升级卡 | 每批次产出 | 单次耗时 | 耗电 | FE/颗 |
 | --- | --- | --- | --- | --- |
-| 无 | 8 | 2.5 s | 1,600 FE/t | 10,000 |
-| 2 张速度卡 | 8 | 0.65 s | 6,400 FE/t | 约 10,400（tick 取整） |
-| 2 张能量卡 | 8 | 2.5 s | 400 FE/t | 2,500 |
-| 2 张速度卡 + 2 张能量卡 | 8 | 0.65 s | 1,600 FE/t | 约 2,600（tick 取整） |
+| 无 | 8 | 2.5 s（50 tick） | 1,600 FE/t | 10,000 |
+| 2 张速度卡 | 8 | 1.4 s（28 tick） | 5,060 FE/t | 约 17,700 |
+| 8 张速度卡（满） | 8 | 0.25 s（5 tick） | 160,000 FE/t | 100,000 |
+| 2 张能量卡 | 8 | 2.5 s（50 tick） | 900 FE/t | 5,625 |
+| 8 张能量卡（满） | 8 | 2.5 s（50 tick） | 160 FE/t | 1,000 |
+| 8 速度 + 8 能量 | 8 | 0.25 s（5 tick） | 16,000 FE/t | 10,000 |
 
-终极档（8x 速度）同样 64 颗种子：8 个 / 0.3 s / 12,800 FE/t，约 9,600 FE 一颗。
+终极档（档位自带 8 倍速）同样 64 颗种子：8 个 / 0.3 s（6 tick）/ 12,800 FE/t，9,600 FE 一颗；
+再叠 8 张速度卡就是 1 tick 一批、每 tick 1,280,000 FE、FE/颗 160,000（纯超频）。
 
 ---
 
@@ -165,6 +180,10 @@
 
 ## 十一、更新记录
 
+- **1.4.0**：按 Mekanism 官方文档对齐升级与合成。升级算法改为 Mekanism 本体公式（耗时 × 底数^(−fraction速度)，
+  耗能 × 底数^(2×fraction速度 − fraction能量)，fraction = 已装 / Upgrade#getMax()），底数为 Mekanism 自己的
+  `maxUpgradeMultiplier`（默认 10），本模组用同名配置键替代原有的 `speedUpgradeSpeedPerCard` /
+  `energyUpgradeEfficiencyFactor`；机器合成配方改为 Mekanism 机器同款结构（合金标签 + 电路标签 + 锭标签 + 钢机壳 / 上一档机器）。
 - **1.3.0**：升级卡改用 Mekanism 官方接口（`mekanism.api.Upgrade` / `IUpgradeItem`，同种上限即 `Upgrade#getMax()` = 8 张），速度 / 能量卡可在同一槽内叠放；
   新增按电量比例推进的降速处理（一 tick 要的电超过缓存时按比例推进，不会憋死）；修正界面槽位坐标与 Shift 点击（输出槽一次抽空、种子槽整栈放入，不再卡在 127）；
   配置项补上段标题与 9 个选项的翻译键，Configured / Forge Config Screens 直接显示中文名称与说明。

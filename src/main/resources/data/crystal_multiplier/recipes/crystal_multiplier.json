@@ -1,18 +1,21 @@
 {
   "type": "minecraft:crafting_shaped",
   "pattern": [
-    "IGI",
-    "GMG",
-    "IGI"
+    "ACA",
+    "IXI",
+    "ACA"
   ],
   "key": {
+    "A": {
+      "tag": "mekanism:alloys/basic"
+    },
+    "C": {
+      "tag": "forge:circuits/basic"
+    },
     "I": {
       "tag": "forge:ingots/iron"
     },
-    "G": {
-      "tag": "forge:glass"
-    },
-    "M": {
+    "X": {
       "item": "mekanism:steel_casing"
     }
   },
