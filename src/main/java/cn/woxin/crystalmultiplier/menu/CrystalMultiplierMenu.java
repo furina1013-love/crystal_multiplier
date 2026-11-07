@@ -131,6 +131,10 @@ public class CrystalMultiplierMenu extends AbstractContainerMenu {
         return this.data.get(8) != 0;
     }
 
+    public int getItemsPerBatch() {
+        return this.data.get(10);
+    }
+
     public int getCrystalsPerParallel() {
         int per = this.data.get(9);
         return per <= 0 ? 16 : per;

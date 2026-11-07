@@ -22,5 +22,6 @@
   "gui.crystal_multiplier.parallel": "并行: %s",
   "gui.crystal_multiplier.per_parallel": "每 %s 个水晶 = 1 条并行",
   "gui.crystal_multiplier.seed_invalid": "需要 %s 的倍数个水晶",
-  "gui.crystal_multiplier.seed_tip": "种子不会被消耗"
+  "gui.crystal_multiplier.seed_tip": "种子不会被消耗",
+  "gui.crystal_multiplier.batch": "每批次产出: %s"
 }

@@ -18,6 +18,9 @@ public final class CrystalMultiplierConfig {
     public static final ForgeConfigSpec.IntValue MAX_SEED_CAPACITY;
     public static final ForgeConfigSpec.IntValue MAX_PARALLEL;
     public static final ForgeConfigSpec.DoubleValue BASE_SPEED_MULTIPLIER;
+    public static final ForgeConfigSpec.DoubleValue BASE_ENERGY_MULTIPLIER;
+    public static final ForgeConfigSpec.DoubleValue SPEED_UPGRADE_OUTPUT_PER_CARD;
+    public static final ForgeConfigSpec.DoubleValue ENERGY_UPGRADE_EFFICIENCY_PER_CARD;
     public static final ForgeConfigSpec.BooleanValue ONE_TICK_OUTPUT;
 
     static {
@@ -51,6 +54,24 @@ public final class CrystalMultiplierConfig {
                 .comment("Global base speed multiplier applied to every recipe (higher = faster).",
                         "Energy per tick is scaled by the same factor, so the total FE per operation stays constant.")
                 .defineInRange("baseSpeedMultiplier", 4.0D, 0.25D, 64.0D);
+
+        BASE_ENERGY_MULTIPLIER = builder
+                .comment("Global factor applied to the energy cost of every operation (1.0 = recipe value).",
+                        "Default 0.5, i.e. everything runs on half the energy the recipe asks for.",
+                        "Total FE per crystal = recipe energy * ticks * this factor / energy upgrades,",
+                        "so lowering it is the cheapest way to make the machine lazy friendly.")
+                .defineInRange("baseEnergyMultiplier", 0.5D, 0.01D, 64.0D);
+
+        SPEED_UPGRADE_OUTPUT_PER_CARD = builder
+                .comment("mekanism:upgrade_speed no longer shortens the batch time; every card adds this much",
+                        "extra output per finished batch (0.5 = +50% items, 2 cards = 2x items).",
+                        "Energy per tick scales with the extra output, so the FE cost per crystal stays constant.")
+                .defineInRange("speedUpgradeOutputPerCard", 0.5D, 0.0D, 64.0D);
+
+        ENERGY_UPGRADE_EFFICIENCY_PER_CARD = builder
+                .comment("mekanism:upgrade_energy keeps reducing the energy cost instead of touching any buffer:",
+                        "every card multiplies the energy efficiency by (1 + this value).")
+                .defineInRange("energyUpgradeEfficiencyPerCard", 0.5D, 0.0D, 64.0D);
 
         ONE_TICK_OUTPUT = builder
                 .comment("Global switch: when true every machine finishes one output batch per tick,",
@@ -111,6 +132,18 @@ public final class CrystalMultiplierConfig {
 
     public static double baseSpeedMultiplier() {
         return doubleOr(BASE_SPEED_MULTIPLIER, 4.0D);
+    }
+
+    public static double baseEnergyMultiplier() {
+        return doubleOr(BASE_ENERGY_MULTIPLIER, 0.5D);
+    }
+
+    public static double speedUpgradeOutputPerCard() {
+        return doubleOr(SPEED_UPGRADE_OUTPUT_PER_CARD, 0.5D);
+    }
+
+    public static double energyUpgradeEfficiencyPerCard() {
+        return doubleOr(ENERGY_UPGRADE_EFFICIENCY_PER_CARD, 0.5D);
     }
 
     public static boolean oneTickOutput() {

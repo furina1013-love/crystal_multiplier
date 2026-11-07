@@ -50,7 +50,8 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
     private static final int DATA_PARALLEL = 7;
     private static final int DATA_SEED_OK = 8;
     private static final int DATA_PER_PARALLEL = 9;
-    private static final int DATA_COUNT = 10;
+    private static final int DATA_BATCH = 10;
+    private static final int DATA_COUNT = 11;
 
     /** Hard output slot cap, used for the space checks of every parallel lane. */
     private static final int OUTPUT_STACK_LIMIT = 64;
@@ -65,6 +66,7 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
     private boolean active;
     private int parallelism;
     private int perParallel = 16;
+    private int itemsPerBatch;
     private boolean seedValid;
 
     private final int[] syncedData = new int[DATA_COUNT];
@@ -188,6 +190,7 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
             case DATA_PARALLEL -> this.parallelism;
             case DATA_SEED_OK -> this.seedValid ? 1 : 0;
             case DATA_PER_PARALLEL -> this.perParallel;
+            case DATA_BATCH -> this.itemsPerBatch;
             default -> 0;
         };
     }
@@ -340,10 +343,13 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
 
         int speedUpgrades = this.countUpgrades(1);
         int energyUpgrades = this.countUpgrades(2);
-        double speedFactor = 1.0D + 0.5D * speedUpgrades;
-        double energyPenalty = 1.0D + 0.75D * speedUpgrades;
-        double energyEfficiency = 1.0D + 0.5D * energyUpgrades;
+        // Speed cards no longer shorten the batch time: they make one batch produce more items.
+        double outputFactor = 1.0D + CrystalMultiplierConfig.speedUpgradeOutputPerCard() * speedUpgrades;
+        // Energy cards never touch any buffer, they only make the machine cheaper to run.
+        double energyEfficiency = 1.0D
+                + CrystalMultiplierConfig.energyUpgradeEfficiencyPerCard() * energyUpgrades;
         double baseSpeed = Math.max(0.01D, CrystalMultiplierConfig.baseSpeedMultiplier());
+        double baseEnergy = Math.max(0.0001D, CrystalMultiplierConfig.baseEnergyMultiplier());
 
         CrystalMultiplicationRecipe recipe = this.findRecipe();
         ItemStack seed = this.inventory.getStackInSlot(0);
@@ -363,24 +369,25 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
 
         if (recipe != null && lanes > 0) {
             ItemStack result = recipe.getResultItem(this.level.registryAccess());
-            int amount = result.getCount() * lanes;
+            int amount = Math.max(1, (int) Math.round(result.getCount() * lanes * outputFactor));
+            this.itemsPerBatch = amount;
             if (this.canAccept(result, amount)) {
-                // The base speed factor is applied at exactly one place and shows up in both the tick
-                // count and the per tick energy draw, so the FE cost of one operation stays constant
-                // while the machine itself just runs faster. Parallel lanes multiply the output here,
-                // nowhere else, so nothing can be applied twice.
-                int baseTicks = Math.max(1, (int) Math.round(recipe.getTicks()
-                        / (this.tier.getSpeedMultiplier() * baseSpeed * speedFactor)));
-                int baseEnergy = Math.max(1, (int) Math.round(recipe.getEnergyPerTick() * lanes
-                        * this.tier.getSpeedMultiplier() * baseSpeed * energyPenalty / energyEfficiency));
+                // Everything that changes the throughput is applied exactly once, right here:
+                // parallel lanes (seed count), speed cards (items per batch) and the tick/energy
+                // scaling of the tier. Nothing is applied a second time anywhere else.
+                int ticks = Math.max(1, (int) Math.round(recipe.getTicks()
+                        / (this.tier.getSpeedMultiplier() * baseSpeed)));
+                // Energy scales with the extra output of the speed cards, so one crystal always costs the same.
+                int costPerTick = Math.max(1, (int) Math.round(recipe.getEnergyPerTick() * lanes * outputFactor
+                        * this.tier.getSpeedMultiplier() * baseSpeed * baseEnergy / energyEfficiency));
                 if (CrystalMultiplierConfig.oneTickOutput()) {
                     // Optional global switch: one finished batch per tick, but the whole FE cost of that
                     // operation is paid inside that single tick, so the cost per crystal never changes.
                     this.ticksRequired = 1;
-                    this.energyPerTick = (int) Math.min(Integer.MAX_VALUE, (long) baseEnergy * baseTicks);
+                    this.energyPerTick = (int) Math.min(Integer.MAX_VALUE, (long) costPerTick * ticks);
                 } else {
-                    this.ticksRequired = baseTicks;
-                    this.energyPerTick = baseEnergy;
+                    this.ticksRequired = ticks;
+                    this.energyPerTick = costPerTick;
                 }
                 if (this.energy >= this.energyPerTick) {
                     this.energy -= this.energyPerTick;
@@ -399,6 +406,11 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
             this.progress = 0.0D;
             this.ticksRequired = 0;
             this.energyPerTick = 0;
+            this.itemsPerBatch = 0;
+        }
+
+        if (this.parallelism == 0) {
+            this.itemsPerBatch = 0;
         }
 
         if (this.active != working) {
