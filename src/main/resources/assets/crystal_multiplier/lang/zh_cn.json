@@ -1,0 +1,22 @@
+{
+  "itemGroup.crystal_multiplier": "水晶增殖机",
+  "block.crystal_multiplier.crystal_multiplier": "水晶增殖机",
+  "block.crystal_multiplier.crystal_multiplier_advanced": "高级水晶增殖机",
+  "block.crystal_multiplier.crystal_multiplier_elite": "精英水晶增殖机",
+  "block.crystal_multiplier.crystal_multiplier_ultimate": "终极水晶增殖机",
+  "container.crystal_multiplier.crystal_multiplier": "水晶增殖机",
+  "tier.crystal_multiplier.basic": "基础",
+  "tier.crystal_multiplier.advanced": "高级",
+  "tier.crystal_multiplier.elite": "精英",
+  "tier.crystal_multiplier.ultimate": "终极",
+  "gui.crystal_multiplier.energy": "能量: %s / %s FE",
+  "gui.crystal_multiplier.cost": "耗能: %s FE/t",
+  "gui.crystal_multiplier.progress": "进度: %s%%",
+  "gui.crystal_multiplier.time": "耗时: %s秒",
+  "gui.crystal_multiplier.active": "状态: 运行中",
+  "gui.crystal_multiplier.idle": "状态: 待机",
+  "jei.crystal_multiplier.category": "水晶增殖",
+  "jei.crystal_multiplier.seed": "种子（不消耗）",
+  "jei.crystal_multiplier.energy": "耗能: %s FE/t",
+  "jei.crystal_multiplier.time": "耗时: %s秒"
+}

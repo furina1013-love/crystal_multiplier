@@ -1,0 +1,36 @@
+{
+  "variants": {
+    "active=false,facing=north": {
+      "model": "crystal_multiplier:block/crystal_multiplier_elite",
+      "y": 0
+    },
+    "active=false,facing=east": {
+      "model": "crystal_multiplier:block/crystal_multiplier_elite",
+      "y": 90
+    },
+    "active=false,facing=south": {
+      "model": "crystal_multiplier:block/crystal_multiplier_elite",
+      "y": 180
+    },
+    "active=false,facing=west": {
+      "model": "crystal_multiplier:block/crystal_multiplier_elite",
+      "y": 270
+    },
+    "active=true,facing=north": {
+      "model": "crystal_multiplier:block/crystal_multiplier_elite_active",
+      "y": 0
+    },
+    "active=true,facing=east": {
+      "model": "crystal_multiplier:block/crystal_multiplier_elite_active",
+      "y": 90
+    },
+    "active=true,facing=south": {
+      "model": "crystal_multiplier:block/crystal_multiplier_elite_active",
+      "y": 180
+    },
+    "active=true,facing=west": {
+      "model": "crystal_multiplier:block/crystal_multiplier_elite_active",
+      "y": 270
+    }
+  }
+}

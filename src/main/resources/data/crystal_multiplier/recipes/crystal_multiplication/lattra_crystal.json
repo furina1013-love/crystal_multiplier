@@ -1,0 +1,25 @@
+{
+  "type": "forge:conditional",
+  "recipes": [
+    {
+      "conditions": [
+        {
+          "type": "forge:mod_loaded",
+          "modid": "extendedae_plus"
+        }
+      ],
+      "recipe": {
+        "type": "crystal_multiplier:crystal_multiplication",
+        "seed": {
+          "item": "extendedae_plus:lattra_crystal"
+        },
+        "result": {
+          "item": "extendedae_plus:lattra_crystal",
+          "count": 2
+        },
+        "energy_per_tick": 340,
+        "ticks": 300
+      }
+    }
+  ]
+}

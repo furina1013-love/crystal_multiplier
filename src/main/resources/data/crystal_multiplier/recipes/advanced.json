@@ -1,0 +1,22 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "ACA",
+    "CMC",
+    "ACA"
+  ],
+  "key": {
+    "A": {
+      "item": "mekanism:alloy_infused"
+    },
+    "C": {
+      "item": "crystal_multiplier:crystal_multiplier"
+    },
+    "M": {
+      "item": "crystal_multiplier:crystal_multiplier"
+    }
+  },
+  "result": {
+    "item": "crystal_multiplier:advanced"
+  }
+}

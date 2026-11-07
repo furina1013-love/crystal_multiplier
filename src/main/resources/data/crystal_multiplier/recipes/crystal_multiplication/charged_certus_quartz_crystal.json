@@ -1,0 +1,12 @@
+{
+  "type": "crystal_multiplier:crystal_multiplication",
+  "seed": {
+    "item": "ae2:charged_certus_quartz_crystal"
+  },
+  "result": {
+    "item": "ae2:charged_certus_quartz_crystal",
+    "count": 2
+  },
+  "energy_per_tick": 240,
+  "ticks": 220
+}

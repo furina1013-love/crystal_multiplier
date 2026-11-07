@@ -1,0 +1,55 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="MIT"
+
+[[mods]]
+modId="crystal_multiplier"
+version="${mod_version}"
+displayName="水晶增殖机 / Crystal Multiplier"
+authors="woxin"
+description='''
+A Mekanism-styled machine for non-recursive AE2 crystal multiplication.
+用于稳定自动化赛特斯、福鲁伊克斯与恩特罗等 AE2 系水晶的增殖机器。
+'''
+
+[[dependencies.crystal_multiplier]]
+    modId="forge"
+    mandatory=true
+    versionRange="[47,)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.crystal_multiplier]]
+    modId="minecraft"
+    mandatory=true
+    versionRange="[1.20.1,1.21)"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.crystal_multiplier]]
+    modId="ae2"
+    mandatory=true
+    versionRange="[15,)"
+    ordering="AFTER"
+    side="BOTH"
+
+[[dependencies.crystal_multiplier]]
+    modId="mekanism"
+    mandatory=true
+    versionRange="[10.4,)"
+    ordering="AFTER"
+    side="BOTH"
+
+[[dependencies.crystal_multiplier]]
+    modId="extendedae"
+    mandatory=false
+    versionRange="[1,)"
+    ordering="AFTER"
+    side="BOTH"
+
+[[dependencies.crystal_multiplier]]
+    modId="jei"
+    mandatory=false
+    versionRange="[15,)"
+    ordering="AFTER"
+    side="CLIENT"

@@ -1,0 +1,22 @@
+{
+  "itemGroup.crystal_multiplier": "Crystal Multiplier",
+  "block.crystal_multiplier.crystal_multiplier": "Crystal Multiplier",
+  "block.crystal_multiplier.crystal_multiplier_advanced": "Advanced Crystal Multiplier",
+  "block.crystal_multiplier.crystal_multiplier_elite": "Elite Crystal Multiplier",
+  "block.crystal_multiplier.crystal_multiplier_ultimate": "Ultimate Crystal Multiplier",
+  "container.crystal_multiplier.crystal_multiplier": "Crystal Multiplier",
+  "tier.crystal_multiplier.basic": "Basic",
+  "tier.crystal_multiplier.advanced": "Advanced",
+  "tier.crystal_multiplier.elite": "Elite",
+  "tier.crystal_multiplier.ultimate": "Ultimate",
+  "gui.crystal_multiplier.energy": "Energy: %s / %s FE",
+  "gui.crystal_multiplier.cost": "Consumption: %s FE/t",
+  "gui.crystal_multiplier.progress": "Progress: %s%%",
+  "gui.crystal_multiplier.time": "Time: %ss",
+  "gui.crystal_multiplier.active": "Status: Working",
+  "gui.crystal_multiplier.idle": "Status: Idle",
+  "jei.crystal_multiplier.category": "Crystal Multiplication",
+  "jei.crystal_multiplier.seed": "Seed (not consumed)",
+  "jei.crystal_multiplier.energy": "Energy: %s FE/t",
+  "jei.crystal_multiplier.time": "Time: %ss"
+}

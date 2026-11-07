@@ -1,0 +1,22 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "pattern": [
+    "IGI",
+    "GMG",
+    "IGI"
+  ],
+  "key": {
+    "I": {
+      "tag": "forge:ingots/iron"
+    },
+    "G": {
+      "tag": "forge:glass"
+    },
+    "M": {
+      "item": "mekanism:steel_casing"
+    }
+  },
+  "result": {
+    "item": "crystal_multiplier:crystal_multiplier"
+  }
+}
