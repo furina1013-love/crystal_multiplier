@@ -62,7 +62,8 @@ jar {
             'Specification-Version'   : '1',
             'Implementation-Title'    : project.name,
             'Implementation-Version'  : project.version,
-            'Implementation-Vendor'   : 'woxin'
+            'Implementation-Vendor'   : 'woxin',
+            'MixinConfigs'            : 'crystal_multiplier.mixins.json'
         ])
     }
 }

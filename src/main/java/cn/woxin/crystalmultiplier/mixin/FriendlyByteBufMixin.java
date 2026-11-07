@@ -12,10 +12,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
  * Vanilla writes the item count as a single byte in the item packet format, which caps every
- * ItemStack at 255/127 items. Replace only the count read/write inside writeItem/readItem with a
- * VarInt so large stacks survive a container sync.
+ * ItemStack at 255/127 items. Replace only the count read/write inside writeItemStack/readItem with
+ * a VarInt so large stacks survive a container sync. (writeItem is a thin wrapper around the
+ * Forge-added writeItemStack method, so the redirect has to target the latter.)
  *
- * <p>The redirect is deliberately limited to {@code writeItem}/{@code readItem}: the item id and
+ * <p>The redirect is deliberately limited to {@code writeItemStack}/{@code readItem}: the item id and
  * the optional tag are untouched, and the rest of the packet layout stays identical.</p>
  */
 @Mixin(FriendlyByteBuf.class)
@@ -25,7 +26,7 @@ public class FriendlyByteBufMixin {
     @Unique
     private int crystal$pendingCount;
 
-    @Redirect(method = "m_130055_", remap = false,
+    @Redirect(method = "writeItemStack", remap = false,
             at = @At(value = "INVOKE", target = "Lnet/minecraft/network/FriendlyByteBuf;writeByte(I)Lio/netty/buffer/ByteBuf;"))
     private ByteBuf crystal$writeCount(int count) {
         return ((FriendlyByteBuf) (Object) this).writeVarInt(count);

@@ -51,6 +51,12 @@ public class CrystalSlot extends BasicInventorySlot {
         return this.output;
     }
 
+    @Override
+    public boolean isItemValid(ItemStack stack) {
+        // Output slots are filled by the machine through insertInternal, never by players or pipes.
+        return !this.output && super.isItemValid(stack);
+    }
+
     /** Total amount stored in this slot: the visible ItemStack plus the hidden overflow. */
     public int getStoredCount() {
         return this.current.getCount() + this.extra;

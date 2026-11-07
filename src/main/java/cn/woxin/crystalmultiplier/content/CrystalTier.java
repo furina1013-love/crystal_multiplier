@@ -2,6 +2,8 @@ package cn.woxin.crystalmultiplier.content;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
+import mekanism.api.tier.BaseTier;
+import mekanism.api.tier.ITier;
 import net.minecraft.util.StringRepresentable;
 
 /**
@@ -10,12 +12,11 @@ import net.minecraft.util.StringRepresentable;
  * upgrade cards and raise the stack size of the single seed slot as well as of every
  * output slot.
  * <p>
- * 1.20.1 stores item counts in a signed byte (both on disk and on the wire), so a single
- * ItemStack can never hold more than 127 items. The machine inventory hides everything above
- * that limit in an overflow counter, which is why the tiers below advertise 64/128/256/512.
- * Every value is a multiple of the default lane size (16).
+ * 1.6.0 bundles ItemStack/FriendlyByteBuf mixins so the machine slots can carry more than the
+ * vanilla signed-byte limit both in NBT and on the wire. The tiers below therefore advertise
+ * 64/128/256/512 items per slot; every value is a multiple of the default lane size (16).
  */
-public enum CrystalTier implements StringRepresentable {
+public enum CrystalTier implements StringRepresentable, ITier {
     BASIC("basic", 1.0D, 200_000, 3, 4, 20_000, 64, 64, 0xFF3F76E4, ChatFormatting.GRAY),
     ADVANCED("advanced", 2.0D, 800_000, 6, 6, 80_000, 128, 128, 0xFF3FBF6A, ChatFormatting.GREEN),
     ELITE("elite", 4.0D, 3_200_000, 9, 8, 320_000, 256, 256, 0xFFB03FE4, ChatFormatting.LIGHT_PURPLE),
@@ -53,6 +54,11 @@ public enum CrystalTier implements StringRepresentable {
 
     public String getTranslationKey() {
         return "tier.crystal_multiplier." + this.tierName;
+    }
+
+    @Override
+    public BaseTier getBaseTier() {
+        return BaseTier.values()[this.ordinal()];
     }
 
     @Override

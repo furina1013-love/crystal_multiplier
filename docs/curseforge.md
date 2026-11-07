@@ -31,8 +31,10 @@ An AE2-flavoured multiplication machine for crystal production lines. Instead of
 | Ultimate | 8x | 12,800,000 FE | 1,280,000 FE/t | 12 | 8 speed + 8 energy | 512 | 512 |
 
 Tiers change speed, energy handling, output slot counts and stack limits; the upgrade window comes from Mekanism itself, so every tier accepts 8 speed and 8 energy cards. Every tier still multiplies only one crystal type at a time.
+All four blocks register `AttributeTier` and `AttributeUpgradeable`, so Mekanism's own **Tier Installer** items (Basic / Advanced / Elite / Ultimate) upgrade them in place. The upgrade keeps energy, seed and output contents, installed upgrade cards and redstone settings, and expands the output slots to the new tier.
 Since 1.6.0 a small `ItemStack` / `FriendlyByteBuf` mixin stores the real count in NBT and writes it as a VarInt on the network,
 so a single stack can hold 128 / 256 / 512 items directly. Seed and output slots use real large stacks; only values above 4096 fall back to the overflow counter.
+Because the item-count network encoding changed, **both client and server must run 1.6.0+**; old and new versions cannot connect to each other.
 
 ---
 
@@ -186,8 +188,8 @@ progress arrow inside the machine (52,45,32,8) opens the matching recipe.
 ## Changelog
 
 - **1.6.0** — Added `ItemStack` / `FriendlyByteBuf` mixins so NBT and network packets keep counts above 127; seed and output slots now use real large stacks.
-  Side configuration exposes item output and energy input only and item auto-ejection is enabled. Fixed the duplicated title at the top of the GUI.
-  Block textures keep the 1.0.0 grey-steel base with visible per-tier recolouring and tier pips.
+  Side configuration exposes item output and energy input only and item auto-ejection is enabled. Fixed the GUI title showing the raw `container.*` key / being drawn twice, and restored the player inventory label.
+  Compatible with Mekanism's own Tier Installer items, which upgrade a machine in place while keeping its contents. Block textures keep the 1.0.0 grey-steel base with visible per-tier recolouring and tier pips.
 - **1.5.0** — The machine is a real Mekanism machine now: blocks use `BlockTile` + `BlockTileBuilder`, the block entity extends
   `TileEntityMekanism`, and the screen is Mekanism's `GuiConfigurableTile` with its upgrade window, side configuration, energy tab
   and redstone tab; only speed and energy cards are accepted. The hand-drawn GUI textures were removed and block textures reverted

@@ -28,6 +28,7 @@ public class CrystalMultiplierScreen extends GuiConfigurableTile<CrystalMultipli
         this.dynamicSlots = true;
         this.imageWidth = 176;
         this.imageHeight = 166;
+        this.titleLabelY = 4;
     }
 
     @Override
@@ -47,6 +48,7 @@ public class CrystalMultiplierScreen extends GuiConfigurableTile<CrystalMultipli
     protected void drawForegroundText(GuiGraphics guiGraphics, int mouseX, int mouseY) {
         // renderTitleText already draws the centered title; drawing this.title again would duplicate it.
         this.renderTitleText(guiGraphics);
+        this.drawString(guiGraphics, this.playerInventoryTitle, this.inventoryLabelX, this.inventoryLabelY, this.titleTextColor());
         super.drawForegroundText(guiGraphics, mouseX, mouseY);
     }
 

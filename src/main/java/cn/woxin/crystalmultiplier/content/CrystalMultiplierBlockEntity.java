@@ -22,16 +22,21 @@ import mekanism.common.inventory.container.sync.SyncableDouble;
 import mekanism.common.inventory.container.sync.SyncableInt;
 import mekanism.common.lib.transmitter.TransmissionType;
 import mekanism.common.tile.base.TileEntityMekanism;
+import mekanism.common.tile.component.ITileComponent;
 import mekanism.common.tile.component.TileComponentConfig;
 import mekanism.common.tile.component.TileComponentEjector;
 import mekanism.common.tile.component.config.ConfigInfo;
 import mekanism.common.tile.component.config.DataType;
 import mekanism.common.tile.component.config.slot.InventorySlotInfo;
 import mekanism.api.RelativeSide;
+import mekanism.common.tile.interfaces.IRedstoneControl;
 import mekanism.common.tile.interfaces.ISideConfiguration;
+import mekanism.common.upgrade.IUpgradeData;
 import mekanism.common.util.MekanismUtils;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
@@ -241,6 +246,11 @@ public class CrystalMultiplierBlockEntity extends TileEntityMekanism implements 
         if (this.configComponent == null) {
             this.setupComponents();
         }
+        // TileEntityMekanism only ticks the frequency and upgrade components. The ejector has to be
+        // ticked explicitly, exactly like TileEntityConfigurableMachine does for Mekanism machines.
+        if (this.ejectorComponent != null) {
+            this.ejectorComponent.tickServer();
+        }
 
         CrystalMultiplicationRecipe recipe = this.findRecipe();
         ItemStack seed = this.seedSlot.getStack();
@@ -355,6 +365,75 @@ public class CrystalMultiplierBlockEntity extends TileEntityMekanism implements 
     @Override
     public Component getName() {
         return this.getBlockState().getBlock().getName();
+    }
+
+    @Override
+    public Component getDisplayName() {
+        // TileEntityMekanism defaults nameable tiles to container.<registry name>; use the block name
+        // so the GUI title is the same tier-specific name shown by the item.
+        return this.getName();
+    }
+
+    @Override
+    public @NotNull IUpgradeData getUpgradeData() {
+        if (this.configComponent == null) {
+            this.setupComponents();
+        }
+        CompoundTag tag = new CompoundTag();
+        tag.put("Energy", this.energyContainer.serializeNBT());
+        ListTag slots = new ListTag();
+        for (CrystalSlot slot : this.getMachineSlots()) {
+            slots.add(slot.serializeNBT());
+        }
+        tag.put("Slots", slots);
+        CompoundTag components = new CompoundTag();
+        for (ITileComponent component : this.getComponents()) {
+            component.write(components);
+        }
+        tag.put("Components", components);
+        tag.putDouble("CrystalProgress", this.progress);
+        tag.putInt("CrystalTicksRequired", this.ticksRequired);
+        tag.putInt("CrystalEnergyPerTick", this.energyPerTick);
+        tag.putInt("CrystalParallelism", this.parallelism);
+        tag.putInt("CrystalItemsPerBatch", this.itemsPerBatch);
+        tag.putBoolean("CrystalSeedValid", this.seedValid);
+        tag.putInt("ControlType", this.getControlType().ordinal());
+        tag.putBoolean("Active", this.getActive());
+        return new CrystalUpgradeData(tag);
+    }
+
+    @Override
+    public void parseUpgradeData(@NotNull IUpgradeData data) {
+        if (!(data instanceof CrystalUpgradeData upgrade)) {
+            super.parseUpgradeData(data);
+            return;
+        }
+        CompoundTag tag = upgrade.getTag();
+        this.progress = tag.getDouble("CrystalProgress");
+        this.ticksRequired = tag.getInt("CrystalTicksRequired");
+        this.energyPerTick = tag.getInt("CrystalEnergyPerTick");
+        this.parallelism = tag.getInt("CrystalParallelism");
+        this.itemsPerBatch = tag.getInt("CrystalItemsPerBatch");
+        this.seedValid = tag.getBoolean("CrystalSeedValid");
+        if (tag.contains("ControlType", Tag.TAG_INT)) {
+            this.setControlType(IRedstoneControl.RedstoneControl.byIndexStatic(tag.getInt("ControlType")));
+        }
+        if (tag.contains("Energy", Tag.TAG_COMPOUND)) {
+            this.energyContainer.deserializeNBT(tag.getCompound("Energy"));
+        }
+        ListTag slots = tag.getList("Slots", Tag.TAG_COMPOUND);
+        List<CrystalSlot> machine = this.getMachineSlots();
+        for (int i = 0; i < Math.min(slots.size(), machine.size()); i++) {
+            machine.get(i).deserializeNBT(slots.getCompound(i));
+        }
+        if (this.configComponent == null) {
+            this.setupComponents();
+        }
+        CompoundTag components = tag.getCompound("Components");
+        for (ITileComponent component : this.getComponents()) {
+            component.read(components);
+        }
+        this.setActive(tag.getBoolean("Active"));
     }
 
     @Override

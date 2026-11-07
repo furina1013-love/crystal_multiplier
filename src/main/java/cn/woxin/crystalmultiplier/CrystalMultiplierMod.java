@@ -13,6 +13,8 @@ import mekanism.api.Upgrade;
 import mekanism.api.math.FloatingLong;
 import mekanism.common.block.attribute.Attribute;
 import mekanism.common.block.attribute.AttributeStateFacing;
+import mekanism.common.block.attribute.AttributeTier;
+import mekanism.common.block.attribute.AttributeUpgradeable;
 import mekanism.common.block.attribute.Attributes;
 import mekanism.common.content.blocktype.BlockTypeTile;
 import mekanism.common.registration.impl.BlockDeferredRegister;
@@ -66,16 +68,30 @@ public class CrystalMultiplierMod {
         for (int index = 0; index < tiers.length; index++) {
             CrystalTier tier = tiers[index];
             int slot = index;
+            Attribute[] attributes;
+            if (slot + 1 < tiers.length) {
+                attributes = new Attribute[]{
+                        Attributes.INVENTORY,
+                        Attributes.ACTIVE,
+                        Attributes.REDSTONE,
+                        new AttributeStateFacing(),
+                        new AttributeTier<>(tier),
+                        new AttributeUpgradeable(() -> TIER_BLOCKS.get(slot + 1))
+                };
+            } else {
+                attributes = new Attribute[]{
+                        Attributes.INVENTORY,
+                        Attributes.ACTIVE,
+                        Attributes.REDSTONE,
+                        new AttributeStateFacing(),
+                        new AttributeTier<>(tier)
+                };
+            }
             BlockTypeTile<CrystalMultiplierBlockEntity> type = BlockTypeTile.BlockTileBuilder
                     .<CrystalMultiplierBlockEntity>createBlock(() -> TIER_TILES.get(slot),
                             () -> "block.crystal_multiplier." + tier.getRegistryName())
                     .withGui(() -> MULTIPLIER_CONTAINER)
-                    .with(new Attribute[]{
-                            Attributes.INVENTORY,
-                            Attributes.ACTIVE,
-                            Attributes.REDSTONE,
-                            new AttributeStateFacing()
-                    })
+                    .with(attributes)
                     .withEnergyConfig(
                             () -> FloatingLong.create(tier.getBaseTransfer()),
                             () -> FloatingLong.create(tier.getEnergyCapacity()))
