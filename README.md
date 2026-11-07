@@ -1,15 +1,9 @@
 # 水晶增殖机 (Crystal Multiplier) — Minecraft 1.20.1 Forge
 
-参考原始 NeoForge 1.21.1 版本 `crystal_multiplier-2.1.1.jar` 的思路，用 ForgeGradle 6 从零重写的 1.20.1 移植版。
-
 ## 设计目标（来自需求）
 
 - **配方不消耗材料**：种子槽里的水晶只作为「识别用配料」，永不消耗、只要求存在。
-- **只消耗能量（FE）**：不引入任何流体，纯 FE 驱动，兼容 Mekanism 的 Forge Energy 转换。
-- **Mekanism 原生机器**：方块与方块实体基于 Mekanism 的 `BlockTile` / `TileEntityMekanism`，界面直接使用 Mek 本体 GUI，
-  自带升级窗口（速度 / 能量各 8 张）、侧面配置、能量与红石控制标签页；升级卡走 Mekanism 官方 `Upgrade` 接口。
-- **Mekanism 风格升级语义**：速度卡提高处理速度（缩短批次时间），能量卡降低单次操作耗能，与 Mekanism 机器一致。
-- **工厂分级**：基础 / 高级 / 精英 / 终极四档，档位越高 → 能量缓存/接收更大、输出槽更多、批次耗时更短、堆叠上限更高。
+- **只消耗能量（FE）**：不引入任何流体，纯 FE 驱动
 - **任意档位都只能同时增殖一种水晶**。
 
 ## 机器档位
