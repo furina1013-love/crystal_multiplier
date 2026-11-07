@@ -1,6 +1,8 @@
 package cn.woxin.crystalmultiplier.menu;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -35,8 +37,23 @@ public class CrystalMultiplierMenu extends AbstractContainerMenu {
     private final CrystalTier tier;
 
     public CrystalMultiplierMenu(int containerId, Inventory playerInventory, FriendlyByteBuf data) {
-        this(containerId, playerInventory, (CrystalMultiplierBlockEntity) playerInventory.player.level()
-                .getBlockEntity(data.readBlockPos()));
+        this(containerId, playerInventory, restoreBlockEntity(playerInventory, data));
+    }
+
+    /**
+     * The server side menu provider writes the machine position into the open screen packet so that the
+     * client can look its block entity up again. Fail with a readable message instead of a blind cast.
+     */
+    private static CrystalMultiplierBlockEntity restoreBlockEntity(Inventory playerInventory, FriendlyByteBuf data) {
+        if (data == null || !data.isReadable()) {
+            throw new IllegalStateException("crystal_multiplier: the open screen packet carried no block position");
+        }
+        BlockPos pos = data.readBlockPos();
+        BlockEntity blockEntity = playerInventory.player.level().getBlockEntity(pos);
+        if (!(blockEntity instanceof CrystalMultiplierBlockEntity multiplier)) {
+            throw new IllegalStateException("crystal_multiplier: no machine block entity at " + pos);
+        }
+        return multiplier;
     }
 
     public CrystalMultiplierMenu(int containerId, Inventory playerInventory, CrystalMultiplierBlockEntity blockEntity) {

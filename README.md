@@ -112,4 +112,9 @@ export JAVA_HOME=/path/to/jdk-17   # 需要 JDK 17
 
 - `mods.toml`：forge [47,)、minecraft [1.20.1,1.21)、ae2 [15,)、mekanism [10.4,) 为必需；extendedae / jei 可选。
 - JEI 分类未实现（可选功能，不影响机器运行）。
-- 方块模型复用 Mekanism 的 `mekanism:block/machine` 父模型与 `enrichment_chamber` 贴图，正面贴图由参考 jar 提供。
+- 方块模型复用 Mekanism 的 `mekanism:block/machine` 父模型（保证与 Mekanism 机器同款外形），贴图为本模组自绘，四档各有独立配色：基础=钢灰蓝、高级=翠绿、精英=紫、终极=赤红；正面水晶在运行时按 active 状态切换发光贴图。
+
+## 更新记录
+
+- **1.0.1**：修复右键机器打不开界面的问题（打开 GUI 时没有把机器坐标写进网络包，客户端解析失败）；四档机器改为各自配色的独立贴图。
+- **1.0.0**：首个版本，四档工厂 + 种子并行增殖 + Mekanism 升级卡 + 全局配置。

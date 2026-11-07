@@ -2,6 +2,7 @@ package cn.woxin.crystalmultiplier.content;
 
 import cn.woxin.crystalmultiplier.menu.CrystalMultiplierMenu;
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
@@ -26,6 +27,7 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.phys.BlockHitResult;
+import net.minecraftforge.network.NetworkHooks;
 
 import javax.annotation.Nullable;
 
@@ -107,7 +109,11 @@ public class CrystalMultiplierBlock extends BaseEntityBlock {
                 MenuProvider provider = new SimpleMenuProvider(
                         (containerId, inventory, p) -> new CrystalMultiplierMenu(containerId, inventory, multiplier),
                         Component.translatable("container.crystal_multiplier.crystal_multiplier"));
-                player.openMenu(provider);
+                if (player instanceof ServerPlayer serverPlayer) {
+                    // NetworkHooks.openScreen writes the BlockPos into the packet,
+                    // which the client menu constructor reads back with readBlockPos().
+                    NetworkHooks.openScreen(serverPlayer, provider, pos);
+                }
             }
         }
         return InteractionResult.sidedSuccess(level.isClientSide);
