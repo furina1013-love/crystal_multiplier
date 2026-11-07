@@ -90,8 +90,32 @@ public class CrystalMultiplierScreen extends AbstractContainerScreen<CrystalMult
             lines.add(Component.translatable("gui.crystal_multiplier.per_parallel", per));
             lines.add(Component.translatable("gui.crystal_multiplier.parallel", this.menu.getParallelism()));
             lines.add(Component.translatable("gui.crystal_multiplier.seed_size", this.menu.getSeedCapacity()));
+            lines.add(Component.translatable("gui.crystal_multiplier.seed_stored", this.menu.getStoredCount(0),
+                    this.menu.getSeedCapacity()));
             lines.add(Component.translatable("gui.crystal_multiplier.seed_tip"));
             graphics.renderTooltip(this.font, lines, Optional.empty(), mouseX, mouseY);
+        }
+
+        // A slot can hold far more than the 127 items a single ItemStack can carry, and the item badge of
+        // the slot only shows that visible part, so the real amount is printed on top of the slot.
+        int machineSlots = this.menu.getMachineSlotCount();
+        for (int index = 0; index < machineSlots; index++) {
+            Slot slot = this.menu.slots.get(index);
+            int stored = this.menu.getStoredCount(index);
+            int visible = slot.getItem().getCount();
+            if (stored > visible && stored > 0) {
+                String amount = Integer.toString(stored);
+                graphics.drawString(this.font, amount, x + slot.x + 17 - this.font.width(amount),
+                        y + slot.y + 9, 0xFFFFF060, true);
+            }
+            // Slot 0 is the seed slot and has its own, richer tooltip above.
+            if (index > 0 && stored > 0 && this.isHovering(slot.x, slot.y, 16, 16, mouseX, mouseY)) {
+                List<Component> lines = new ArrayList<>();
+                lines.add(Component.translatable("gui.crystal_multiplier.stored", stored,
+                        this.menu.getSlotCapacity(index)));
+                graphics.renderTooltip(this.font, lines, Optional.empty(), mouseX, mouseY);
+                return;
+            }
         }
 
         if (this.isHovering(ENERGY_X, ENERGY_Y, ENERGY_W, ENERGY_H, mouseX, mouseY)) {

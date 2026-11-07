@@ -14,7 +14,7 @@ public final class CrystalMultiplierConfig {
 
     public static final ForgeConfigSpec.IntValue CRYSTALS_PER_PARALLEL;
     public static final ForgeConfigSpec.IntValue SEED_CAPACITY_PER_UPGRADE;
-    public static final ForgeConfigSpec.IntValue MAX_SEED_CAPACITY;
+    public static final ForgeConfigSpec.IntValue SEED_SLOT_CAP_CEILING;
     public static final ForgeConfigSpec.IntValue MAX_PARALLEL;
     public static final ForgeConfigSpec.DoubleValue BASE_SPEED_MULTIPLIER;
     public static final ForgeConfigSpec.DoubleValue BASE_ENERGY_MULTIPLIER;
@@ -37,11 +37,13 @@ public final class CrystalMultiplierConfig {
                         "into an upgrade slot. The tier already sets the base capacity of the single seed slot.")
                 .defineInRange("seedCapacityPerUpgrade", 16, 0, 32);
 
-        MAX_SEED_CAPACITY = builder
+        SEED_SLOT_CAP_CEILING = builder
                 .comment("Hard upper bound of the seed slot capacity.",
-                        "Each tier already brings its own base capacity (64 / 80 / 96 / 112),",
-                        "1.20.1 keeps the stack count in a signed byte so 127 is the absolute limit.")
-                .defineInRange("maxSeedCapacity", 127, 1, 127);
+                        "Each tier already brings its own base capacity (64 / 128 / 256 / 512),",
+                        "plus the bonus of every upgrade card inserted.",
+                        "The machine stores anything above 127 items in a hidden overflow counter,",
+                        "so values beyond the 1.20.1 byte limit are safe here.")
+                .defineInRange("seedSlotCapCeiling", 1024, 64, 4096);
 
         MAX_PARALLEL = builder
                 .comment("Upper bound of parallel lanes a single machine may run.")
@@ -115,8 +117,8 @@ public final class CrystalMultiplierConfig {
         return intOr(SEED_CAPACITY_PER_UPGRADE, 16);
     }
 
-    public static int maxSeedCapacity() {
-        return intOr(MAX_SEED_CAPACITY, 127);
+    public static int seedSlotCapCeiling() {
+        return intOr(SEED_SLOT_CAP_CEILING, 1024);
     }
 
     public static int maxParallel() {

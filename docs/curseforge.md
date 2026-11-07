@@ -4,7 +4,7 @@
 
 - Minecraft **1.20.1**, Forge **47.x**
 - Requires: **Mekanism 10.4+**, **Applied Energistics 2 (AE2) 15+**
-- Optional: AppliedFlux, ExtendedAE Plus (their crystals are auto-enabled), JEI
+- Optional: AppliedFlux, ExtendedAE Plus (their crystals are auto-enabled), JEI (a "Crystal Multiplication" recipe category is included)
 
 ---
 
@@ -25,12 +25,13 @@ An AE2-flavoured multiplication machine for crystal production lines. Instead of
 | Tier | Speed | Energy buffer | Max input | Output slots | Upgrade slots | Seed stack limit | Output stack limit |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Basic | 1x | 200,000 FE | 20,000 FE/t | 3 | 4 | 64 | 64 |
-| Advanced | 2x | 800,000 FE | 80,000 FE/t | 6 | 6 | 80 | 80 |
-| Elite | 4x | 3,200,000 FE | 320,000 FE/t | 9 | 8 | 96 | 96 |
-| Ultimate | 8x | 12,800,000 FE | 1,280,000 FE/t | 12 | 10 | 112 | 112 |
+| Advanced | 2x | 800,000 FE | 80,000 FE/t | 6 | 6 | 128 | 128 |
+| Elite | 4x | 3,200,000 FE | 320,000 FE/t | 9 | 8 | 256 | 256 |
+| Ultimate | 8x | 12,800,000 FE | 1,280,000 FE/t | 12 | 10 | 512 | 512 |
 
 Tiers change speed, energy handling, slot counts and stack limits. Every tier still multiplies only one crystal type at a time.
-1.20.1 stores item counts in a signed byte (127 max), so the stack limits are multiples of 16.
+1.20.1 stores item counts in a signed byte (127 max), so any capacity above 127 is implemented as **visible stack (up to 127) + hidden overflow counter**:
+a slot holding 300 crystals shows 127 on the icon, prints the real amount in the slot corner and shows "Stored: 300 / 512" on hover. Nothing is lost or truncated.
 
 ---
 
@@ -40,8 +41,9 @@ Tiers change speed, energy handling, slot counts and stack limits. Every tier st
 2. **Parallel lanes = seed count / 16** — 16 crystals = 1 lane, 32 = 2 lanes, 64 = 4 lanes.
 3. Output *and* energy draw scale with the lane count, so the **FE cost per crystal stays the same** — more seeds simply means more production lines.
 4. Seeds are **never consumed**. The machine only stalls when the output slots are full.
-5. Seed slot capacity comes from the tier (64 / 80 / 96 / 112) and gains **+16 per inserted upgrade card** (global cap 127, configurable).
-6. Seed and output stacks may exceed 64, so an Ultimate machine holds 112 seeds = 7 parallel lanes.
+5. Seed slot capacity comes from the tier (64 / 128 / 256 / 512) and gains **+16 per inserted upgrade card** (global ceiling `seedSlotCapCeiling`, 1024 by default).
+6. Seed and output stacks may exceed 127, so a fully loaded Ultimate machine holds 512 seeds = **32 parallel lanes**.
+7. Everything above 127 lives in a hidden overflow counter: shift-click whole stacks, hoppers or pipes to fill a slot completely; extraction gives at most one stack (<=127) at a time.
 
 ---
 
@@ -109,7 +111,7 @@ Note: ExtendedAE for 1.20.1 (modid `expatternprovider`) does not ship `entro_cry
 | --- | --- | --- |
 | `crystalsPerParallel` | 16 | Crystals required per parallel lane |
 | `seedCapacityPerUpgrade` | 16 | Capacity added per upgrade card (base capacity is tier-driven) |
-| `maxSeedCapacity` | 127 | Hard cap for seed slot capacity (1.20.1 max) |
+| `seedSlotCapCeiling` | 1024 | Ceiling for seed slot capacity (was `maxSeedCapacity` in 1.1.0) |
 | `maxParallel` | 64 | Parallel lane cap per machine |
 | `baseSpeedMultiplier` | 4.0 | Global base speed multiplier (raises FE/t, total cost stays the same) |
 | `baseEnergyMultiplier` | 0.5 | Global base energy multiplier (0.5 = half cost) |
@@ -130,17 +132,30 @@ Note: ExtendedAE for 1.20.1 (modid `expatternprovider`) does not ship `entro_cry
 
 Ultimate tier with the same 64 seeds: 8 items every 0.3 s at 12,800 FE/t, roughly 9,600 FE per crystal.
 
+Ultimate tier fully loaded with 512 seeds = 32 lanes: 64 items every 0.3 s at 102,400 FE/t (measured in-game).
+
 ---
 
 ## GUI
 
 The screen is drawn in Mekanism's machine style: light steel frame, dark grey body, inset slots, a tick-marked energy gauge and a filling progress arrow.
+The palette and slot/gauge textures were sampled directly from Mekanism's own GUI assets.
 Hover the gauge for energy / capacity / draw per tick, hover the arrow for progress, duration, lanes, items per batch and the number of upgrade cards.
+Slots holding more than 127 items print the real amount in the bottom-right corner.
+
+### JEI
+
+With JEI installed a "Crystal Multiplication" category lists every recipe: seed on the left (marked as not consumed, with how many crystals make one lane),
+the output on the right, and the energy per tick plus the batch time in the middle. All four tiers are catalysts for the category, and clicking the
+progress arrow inside the machine opens the matching recipe.
 
 ---
 
 ## Changelog
 
+- **1.2.0** — Seed and output stack limits changed to **64 / 128 / 256 / 512** per tier (visible stack + hidden overflow counter to get around the 1.20.1 signed-byte limit);
+  JEI recipe category added; textures and GUI regenerated from Mekanism-sampled colours; `maxSeedCapacity` renamed to `seedSlotCapCeiling` (default 1024);
+  all config keys now have translatable names and descriptions so in-game config editors can display them.
 - **1.1.0** — Mekanism-style GUI and textures; speed and energy cards follow Mekanism semantics (faster / cheaper, both configurable and multiplicative); energy buffers reduced to 1/10;
   seed and output stack limits raised per tier (64 / 80 / 96 / 112) with the seed capacity now tier-driven.
 - **1.0.2** — Fixed client-side numbers (energy, capacity, draw, items per batch), overlapping slots on Elite/Ultimate, overlapping title, status text over the energy bar, and items being lost when the machine is broken.
@@ -155,6 +170,7 @@ Hover the gauge for energy / capacity / draw per tick, hover the arrow for progr
 - **Will addons that change output speed conflict?** No. Speed and yield are computed entirely inside this mod and never read modified values from other mods.
 - **Automatable?** Yes. Output slots can be extracted with hoppers or pipes; the seed slot accepts input and never loses its contents.
 - **How do upgrade cards stack?** Multiplicatively. Speed cards: 2 cards = 4x faster. Energy cards: 2 cards = 1/4 energy. Caps at 4096x, adjustable in the config.
+- **Why does the slot show 127 when the tooltip says 512?** Minecraft 1.20.1 cannot store more than 127 items in one stack, so the rest is kept in a hidden overflow counter and printed in the slot corner. The machine counts the real total.
 
 ---
 

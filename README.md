@@ -16,13 +16,16 @@
 | 档位 | 方块 ID | 速度倍率 | 能量缓存 | 输出槽 | 升级槽 | 最大输入 | 种子槽上限 | 输出槽上限 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 基础 | `crystal_multiplier:crystal_multiplier` | 1x | 200,000 FE | 3 | 4 | 20,000 FE/t | 64 | 64 |
-| 高级 | `crystal_multiplier:crystal_multiplier_advanced` | 2x | 800,000 FE | 6 | 6 | 80,000 FE/t | 80 | 80 |
-| 精英 | `crystal_multiplier:crystal_multiplier_elite` | 4x | 3,200,000 FE | 9 | 8 | 320,000 FE/t | 96 | 96 |
-| 终极 | `crystal_multiplier:crystal_multiplier_ultimate` | 8x | 12,800,000 FE | 12 | 10 | 1,280,000 FE/t | 112 | 112 |
+| 高级 | `crystal_multiplier:crystal_multiplier_advanced` | 2x | 800,000 FE | 6 | 6 | 80,000 FE/t | 128 | 128 |
+| 精英 | `crystal_multiplier:crystal_multiplier_elite` | 4x | 3,200,000 FE | 9 | 8 | 320,000 FE/t | 256 | 256 |
+| 终极 | `crystal_multiplier:crystal_multiplier_ultimate` | 8x | 12,800,000 FE | 12 | 10 | 1,280,000 FE/t | 512 | 512 |
 
 档位影响运行速度、能量缓存/接收上限、输出槽数与升级槽数、种子槽与输出槽的堆叠上限。
 **任何档位同时只能增殖一种水晶**，因为种子槽只有一个物品栈，栈里只能是一种物品。
-1.20.1 的物品栈数量用有符号 byte 保存，上限 127，所以各档堆叠上限都取 16 的倍数。
+1.20.1 的**单个物品栈**数量用有符号 byte 保存（存档与网络包里都是如此），上限 127，
+所以槽位容量按「可见栈（≤127）+ 隐藏溢出计数」实现：一个槽里放了 300 颗水晶时，物品图标上显示 127，
+右下角额外标出真实数量 300，悬停显示「存量: 300 / 512」。这样 128 / 256 / 512 的容量既不丢物品也不会被原版截断
+（直接把这么大的数量塞进物品栈会被截断成负数，存档、发包时都会丢东西，所以必须分流）。
 
 ## 种子槽与并行（核心机制）
 
@@ -31,9 +34,11 @@
 - **并行数 = 种子数量 ÷ 16**（上限 `maxParallel`）。16 个 = 1 条并行，32 个 = 2 条……64 个 = 4 条。
 - 输出与每 tick 耗能都按并行数成倍增加，**每颗水晶的 FE 成本恒定**，并行只是多开几条产线。
 - 种子**永不消耗**：只有输出槽被塞满（机器自动停机等待取货）或玩家手动取出时才需要动它。
-- 种子槽容量由档位决定（64 / 80 / 96 / 112），**每插一张升级卡再 +16**（`seedCapacityPerUpgrade`），
-  最终被 `maxSeedCapacity`（默认 127）夹住。
-- 种子槽与输出槽都能堆到 100 以上（基础档 64，终极档 112），带 *Shift* 拖拽或双击可以快速装满一整组。
+- 种子槽容量由档位决定（64 / 128 / 256 / 512），**每插一张升级卡再 +16**（`seedCapacityPerUpgrade`），
+  最终被 `seedSlotCapCeiling`（默认 1024）夹住。
+- 终极档一次可塞 512 颗种子 = **32 条并行**（`maxParallel` 默认上限 64，够用）。
+- 超过 127 的部分走槽位的隐藏溢出计数：*Shift* 点击整组装入、漏斗与管道输入都不受 127 限制，
+  界面在槽位右下角标出真实总量；取出时每次最多给出一组（≤127），对原版界面与其他模组都安全。
 
 ## 速度与能耗
 
@@ -50,7 +55,7 @@
 | --- | --- | --- |
 | `crystalsPerParallel` | 16 | 多少颗同种水晶 = 1 条并行；配方可用 `crystals_per_parallel` 覆盖 |
 | `seedCapacityPerUpgrade` | 16 | 每张升级卡给种子槽增加的容量 |
-| `maxSeedCapacity` | 127 | 种子槽容量硬上限（1.20.1 栈数量为 byte，最多 127） |
+| `seedSlotCapCeiling` | 1024 | 种子槽容量硬上限（旧键 `maxSeedCapacity` 已废弃） |
 | `maxParallel` | 64 | 单机并行上限 |
 | `baseSpeedMultiplier` | 4.0 | 全局基础速度倍率（越高越快，耗能同比上升） |
 | `baseEnergyMultiplier` | **0.5** | 全局基础能耗倍率（0.5 = 所有操作耗能减半） |
@@ -104,12 +109,17 @@
 界面按 Mekanism 机器风格自绘：亮钢边框 + 深灰机身、凹陷式槽位、带刻线的能量槽、填充式进度箭头，
 左上能量槽 12×54，中间进度箭头 26×16，右上档位名，种子槽下方显示当前并行数（种子不合格时红字提示）。
 
+- 配色直接从 Mekanism 的 GUI 贴图采样（外框 190,190,190 / 机身 67,67,67 / 凹陷槽 139,139,139），与 Mek 机器并排没有画风差。
+- 槽位存量超过 127 时右下角显示真实数量，悬停 tooltip 显示「存量: 总量 / 容量」。
+- **JEI**：装了 JEI 会多出「水晶增殖」分类，显示种子（不消耗）、产物、每 tick 耗能、单次耗时；
+  四档机器都是该分类的催化剂，机器界面里点击进度箭头可直接跳到对应配方。
+
 ## 构建
 
 ```bash
 export JAVA_HOME=/path/to/jdk-17   # 需要 JDK 17
 ./gradlew build
-# 产物：build/libs/crystal_multiplier-1.1.0.jar
+# 产物：build/libs/crystal_multiplier-1.2.0.jar
 ```
 
 本模组不 import 任何 AE2 / Mekanism 类，全部通过注册名与物品标签访问，因此 `libs/` 目录可以为空（`build.gradle` 里预留了 `compileOnly fileTree(dir: 'libs')` 以便本地调试）。
@@ -119,10 +129,15 @@ export JAVA_HOME=/path/to/jdk-17   # 需要 JDK 17
 ## 兼容性说明
 
 - `mods.toml`：forge [47,)、minecraft [1.20.1,1.21)、ae2 [15,)、mekanism [10.4,) 为必需；expatternprovider（ExtendedAE 1.20.1 的真实 modid）、appflux、extendedae_plus、jei 为可选软依赖。
-- JEI 分类未实现（可选功能，不影响机器运行）。
+- JEI 为可选：装了就注册「水晶增殖」分类与催化剂，不装则完全不加载相关类（`compileOnly` 依赖，不进入服务端）。
 - 方块模型复用 Mekanism 的 `mekanism:block/machine` 父模型（保证与 Mekanism 机器同款外形），贴图为本模组自绘，四档各有独立配色：基础=钢灰蓝、高级=翠绿、精英=紫、终极=赤红；正面水晶在运行时按 active 状态切换发光贴图。
 
 ## 更新记录
+
+- **1.2.0**：种子槽 / 输出槽堆叠上限按档位改为 **64 / 128 / 256 / 512**（用「可见栈 + 隐藏溢出计数」实现，绕过 1.20.1 物品栈数量的 127 字节上限，界面会标出真实总量，存档与同步包都会持久化）；
+  新增 **JEI 分类**（种子 / 产物 / 耗能 / 耗时，四档机器为催化剂，进度箭头可点击跳转）；贴图与 GUI 改为按 Mekanism 贴图采样生成的新版（四档独立配色，凹陷槽位逐像素对齐 Mek）；
+  配置项 `maxSeedCapacity` 改名为 `seedSlotCapCeiling`（默认 1024，范围 64~4096，旧键自动失效，不会把大容量档位卡在 127）；
+  所有配置项补上可翻译名称与说明，Configured 等配置界面模组可直接显示中英文。
 
 - **1.1.0**：界面与贴图改为 Mekanism 风格（自绘贴图：亮钢边框、深灰机身、凹陷槽位、带刻线能量槽、填充进度箭头）；速度/能量升级卡改为 Mekanism 语义（速度卡提速不增产、能量卡省电不动能量槽，均为连乘且可配置）；能量缓存整体降到原来的 1/10；种子槽与输出槽的堆叠上限按档位提升（64/80/96/112），种子槽容量由档位决定；新增 `speedUpgradeSpeedPerCard`、`energyUpgradeEfficiencyFactor` 配置项（旧的 `speedUpgradeOutputPerCard`、`energyUpgradeEfficiencyPerCard`、`baseSeedCapacity` 已移除）；修复 `crystals_per_parallel` 配成 0 时的除零风险。
 - **1.0.2**：修复能量/容量/单 tick 耗能/每批数量在客户端显示错误（这些数值超过 32767，菜单数据槽只能传 short，改为走方块实体同步包）；修复精英/终极档第三行输出槽与升级槽重叠（界面高度 186 → 198）；修复标题与档位名重叠（档位名改为右对齐）；修复状态文字压在能量条上；进度条 tooltip 重新显示每批产量；破坏机器时掉落槽内物品（原先物品和能量直接消失）；输出槽改为按物品自身堆叠上限工作（不可堆叠物品不再被算到 64）；`mods.toml` 的可选依赖 `extendedae` 改为 1.20.1 的真实 modid `expatternprovider`，并补充 `appflux`、`extendedae_plus`。

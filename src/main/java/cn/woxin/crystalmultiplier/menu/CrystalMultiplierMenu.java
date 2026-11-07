@@ -29,8 +29,8 @@ public class CrystalMultiplierMenu extends AbstractContainerMenu {
     private static final int UPGRADE_BASE_Y = 74;
     private static final int UPGRADE_COLUMNS = 5;
     private static final int PLAYER_INV_X = 8;
-    private static final int PLAYER_INV_Y = 116;
-    private static final int HOTBAR_Y = 174;
+    private static final int PLAYER_INV_Y = 110;
+    private static final int HOTBAR_Y = 170;
 
     private final CrystalMultiplierBlockEntity blockEntity;
     private final ContainerData data;
@@ -65,13 +65,14 @@ public class CrystalMultiplierMenu extends AbstractContainerMenu {
         this.addSlot(new SlotItemHandler(inventory, blockEntity.getSeedSlot(), SEED_X, SEED_Y) {
             @Override
             public int getMaxStackSize() {
-                return blockEntity.getSeedCapacity();
+                // Never more than one byte safe stack: everything above that lives in the hidden
+                // overflow counter of the slot, which shift click and pipes fill for you.
+                return Math.min(CrystalMultiplierBlockEntity.MAX_STACK_COUNT, blockEntity.getSeedCapacity());
             }
 
             @Override
             public int getMaxStackSize(ItemStack stack) {
-                // The seed slot ignores the vanilla 64 cap: upgrades can enlarge it, see the config.
-                return blockEntity.getSeedCapacity();
+                return Math.min(CrystalMultiplierBlockEntity.MAX_STACK_COUNT, blockEntity.getSeedCapacity());
             }
         });
 
@@ -87,15 +88,16 @@ public class CrystalMultiplierMenu extends AbstractContainerMenu {
 
                 @Override
                 public int getMaxStackSize() {
-                    return blockEntity.getOutputStackLimit();
+                    return Math.min(CrystalMultiplierBlockEntity.MAX_STACK_COUNT, blockEntity.getOutputStackLimit());
                 }
 
                 @Override
                 public int getMaxStackSize(ItemStack stack) {
-                    // Higher tiers pack more items into the same output slot.
-                    return Math.max(1, Math.min(blockEntity.getOutputStackLimit(), stack.getMaxStackSize() >= 64
-                            ? blockEntity.getOutputStackLimit()
-                            : stack.getMaxStackSize()));
+                    // Higher tiers pack more items into the same output slot; the part above the byte
+                    // safe limit is kept in the overflow counter of the slot.
+                    int limit = blockEntity.getOutputStackLimit();
+                    return Math.max(1, Math.min(Math.min(CrystalMultiplierBlockEntity.MAX_STACK_COUNT, limit),
+                            stack.getMaxStackSize() >= 64 ? limit : stack.getMaxStackSize()));
                 }
             });
         }
@@ -188,6 +190,16 @@ public class CrystalMultiplierMenu extends AbstractContainerMenu {
         return 1 + this.tier.getOutputSlots() + this.tier.getUpgradeSlots();
     }
 
+    /** Real amount in a machine slot, including the part that does not fit into the visible stack. */
+    public int getStoredCount(int slot) {
+        return this.blockEntity.getInventory().getStored(slot);
+    }
+
+    /** Total capacity of a machine slot (visible stack plus overflow). */
+    public int getSlotCapacity(int slot) {
+        return this.blockEntity.getInventory().capacityOf(slot);
+    }
+
     @Override
     public ItemStack quickMoveStack(Player player, int index) {
         ItemStack result = ItemStack.EMPTY;
@@ -207,8 +219,14 @@ public class CrystalMultiplierMenu extends AbstractContainerMenu {
                             this.blockEntity.getUpgradeEnd(), false);
                 }
                 if (!moved) {
-                    moved = this.moveItemStackTo(stack, this.blockEntity.getSeedSlot(),
-                            this.blockEntity.getSeedSlot() + 1, false);
+                    // Route this through the handler: the visible stack alone can never hold the 128/256/512
+                    // items of the higher tiers, the rest has to land in the overflow counter.
+                    ItemStack rest = this.blockEntity.getInventory()
+                            .insertItem(this.blockEntity.getSeedSlot(), stack, false);
+                    if (rest.getCount() < stack.getCount()) {
+                        moved = true;
+                        stack.setCount(rest.getCount());
+                    }
                 }
                 if (!moved && !this.moveItemStackTo(stack, machineSlots, this.slots.size(), false)) {
                     if (index < machineSlots + 27) {

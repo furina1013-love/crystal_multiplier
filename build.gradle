@@ -3,7 +3,7 @@ plugins {
     id 'net.minecraftforge.gradle' version '[6.0.16,6.2)'
 }
 
-version = '1.1.0'
+version = '1.2.0'
 group = 'cn.woxin.crystalmultiplier'
 base { archivesName = 'crystal_multiplier' }
 
@@ -38,6 +38,8 @@ repositories {
 dependencies {
     minecraft 'net.minecraftforge:forge:1.20.1-47.2.0'
     compileOnly fileTree(dir: 'libs', include: ['*.jar'])
+    // JEI is optional: only the compat classes touch it, and they are discovered by JEI itself.
+    compileOnly "mezz.jei:jei-1.20.1-forge:15.20.0.134"
 }
 
 tasks.named('processResources', ProcessResources).configure {

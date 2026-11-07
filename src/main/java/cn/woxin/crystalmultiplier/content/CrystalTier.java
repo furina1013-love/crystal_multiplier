@@ -10,14 +10,16 @@ import net.minecraft.util.StringRepresentable;
  * upgrade cards and raise the stack size of the single seed slot as well as of every
  * output slot.
  * <p>
- * 1.20.1 stores item counts in a signed byte (both on disk and on the wire), so no stack
- * limit may exceed 127; the tier values below are multiples of the default lane size (16).
+ * 1.20.1 stores item counts in a signed byte (both on disk and on the wire), so a single
+ * ItemStack can never hold more than 127 items. The machine inventory hides everything above
+ * that limit in an overflow counter, which is why the tiers below advertise 64/128/256/512.
+ * Every value is a multiple of the default lane size (16).
  */
 public enum CrystalTier implements StringRepresentable {
     BASIC("basic", 1.0D, 200_000, 3, 4, 20_000, 64, 64, 0xFF3F76E4, ChatFormatting.GRAY),
-    ADVANCED("advanced", 2.0D, 800_000, 6, 6, 80_000, 80, 80, 0xFF3FBF6A, ChatFormatting.GREEN),
-    ELITE("elite", 4.0D, 3_200_000, 9, 8, 320_000, 96, 96, 0xFFB03FE4, ChatFormatting.LIGHT_PURPLE),
-    ULTIMATE("ultimate", 8.0D, 12_800_000, 12, 10, 1_280_000, 112, 112, 0xFFE43F3F, ChatFormatting.RED);
+    ADVANCED("advanced", 2.0D, 800_000, 6, 6, 80_000, 128, 128, 0xFF3FBF6A, ChatFormatting.GREEN),
+    ELITE("elite", 4.0D, 3_200_000, 9, 8, 320_000, 256, 256, 0xFFB03FE4, ChatFormatting.LIGHT_PURPLE),
+    ULTIMATE("ultimate", 8.0D, 12_800_000, 12, 10, 1_280_000, 512, 512, 0xFFE43F3F, ChatFormatting.RED);
 
     private final String tierName;
     private final double speedMultiplier;

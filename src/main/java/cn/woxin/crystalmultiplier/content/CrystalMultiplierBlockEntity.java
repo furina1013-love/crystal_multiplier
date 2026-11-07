@@ -3,6 +3,8 @@ package cn.woxin.crystalmultiplier.content;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
@@ -74,6 +76,7 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
     private boolean seedValid;
     private int syncCooldown;
     private int lastSyncedEnergy = -1;
+    private int lastSyncedExtra = -1;
 
     private final int[] syncedData = new int[DATA_COUNT];
 
@@ -295,19 +298,12 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
         }
         int capacity = this.tier.getSeedStackLimit()
                 + CrystalMultiplierConfig.seedCapacityPerUpgrade() * upgrades;
-        return Math.max(1, Math.min(CrystalMultiplierConfig.maxSeedCapacity(), capacity));
+        return Math.max(1, Math.min(CrystalMultiplierConfig.seedSlotCapCeiling(), capacity));
     }
 
     /** How many items one output slot of this tier holds. */
     public int getOutputStackLimit() {
         return this.tier.getOutputStackLimit();
-    }
-
-    /** How many of this result fit into a single output slot: higher tiers pack more into one slot. */
-    private int limitFor(ItemStack stack) {
-        int itemMax = stack.getMaxStackSize();
-        int limit = itemMax >= 64 ? this.tier.getOutputStackLimit() : itemMax;
-        return Math.max(1, Math.min(MAX_STACK_COUNT, limit));
     }
 
     /* ------------------------------------------------------------------ upgrades */
@@ -384,14 +380,16 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
 
         CrystalMultiplicationRecipe recipe = this.findRecipe();
         ItemStack seed = this.inventory.getStackInSlot(0);
+        // The slot may hold more items than a single ItemStack can carry, so always count the stored total.
+        int seedCount = this.inventory.getStored(0);
         int perParallel = Math.max(1, this.getCrystalsPerParallel(recipe));
 
         // The seed stack is the only thing that decides what and how much the machine produces.
         // It is never consumed, it may only contain one crystal kind (a single slot cannot mix items)
         // and its size has to be a multiple of crystalsPerParallel, every multiple being one parallel lane.
-        this.seedValid = !seed.isEmpty() && seed.getCount() % perParallel == 0;
+        this.seedValid = !seed.isEmpty() && seedCount % perParallel == 0;
         int lanes = this.seedValid
-                ? Math.min(CrystalMultiplierConfig.maxParallel(), seed.getCount() / perParallel)
+                ? Math.min(CrystalMultiplierConfig.maxParallel(), seedCount / perParallel)
                 : 0;
         this.parallelism = lanes;
         this.perParallel = perParallel;
@@ -463,10 +461,12 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
         if (this.level == null || this.level.isClientSide) {
             return;
         }
-        if (!this.active && this.lastSyncedEnergy == this.energy) {
+        int extraSignature = java.util.Arrays.hashCode(this.inventory.copyExtra());
+        if (!this.active && this.lastSyncedEnergy == this.energy && this.lastSyncedExtra == extraSignature) {
             return;
         }
         this.lastSyncedEnergy = this.energy;
+        this.lastSyncedExtra = extraSignature;
         CompoundTag tag = this.makeSyncTag();
         PacketDistributor.TRACKING_CHUNK
                 .with(() -> this.level.getChunkAt(this.worldPosition))
@@ -497,12 +497,7 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
         }
         int remaining = amount;
         for (int slot = this.getOutputStart(); slot < this.getOutputEnd() && remaining > 0; slot++) {
-            ItemStack existing = this.inventory.getStackInSlot(slot);
-            if (existing.isEmpty()) {
-                remaining -= Math.min(limitFor(result), remaining);
-            } else if (ItemStack.isSameItemSameTags(existing, result)) {
-                remaining -= Math.max(0, limitFor(result) - existing.getCount());
-            }
+            remaining = this.inventory.insertUnchecked(slot, result.copyWithCount(remaining), true).getCount();
         }
         return remaining <= 0;
     }
@@ -510,20 +505,7 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
     private void pushResult(ItemStack result, int amount) {
         int remaining = amount;
         for (int slot = this.getOutputStart(); slot < this.getOutputEnd() && remaining > 0; slot++) {
-            ItemStack existing = this.inventory.getStackInSlot(slot);
-            if (existing.isEmpty()) {
-                int moved = Math.min(limitFor(result), remaining);
-                this.inventory.setStackInSlot(slot, result.copyWithCount(moved));
-                remaining -= moved;
-            } else if (ItemStack.isSameItemSameTags(existing, result)) {
-                int space = Math.max(0, limitFor(result) - existing.getCount());
-                int moved = Math.min(space, remaining);
-                if (moved > 0) {
-                    existing.grow(moved);
-                    remaining -= moved;
-                    this.inventory.setStackInSlot(slot, existing);
-                }
-            }
+            remaining = this.inventory.insertUnchecked(slot, result.copyWithCount(remaining), false).getCount();
         }
         this.setChanged();
     }
@@ -541,6 +523,8 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
         tag.putInt("sync_cost", this.energyPerTick);
         tag.putInt("sync_batch", this.itemsPerBatch);
         tag.putDouble("sync_progress", this.progress);
+        // Items above the byte safe stack limit live outside of the ItemStack and need their own channel.
+        tag.putIntArray("sync_extra", this.inventory.copyExtra());
         return tag;
     }
 
@@ -556,6 +540,9 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
         }
         if (tag.contains("sync_progress")) {
             this.progress = tag.getDouble("sync_progress");
+        }
+        if (tag.contains("sync_extra")) {
+            this.inventory.applyExtra(readIntList(tag, "sync_extra"));
         }
     }
 
@@ -577,6 +564,19 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
     protected void saveAdditional(CompoundTag tag) {
         super.saveAdditional(tag);
         tag.put("inventory", this.inventory.serializeNBT());
+        // Only persist the overflow counters when something actually overflowed: keeps saves small and
+        // leaves no stale all-zero array behind that would shadow a datapack/command provided value.
+        int[] extraSnapshot = this.inventory.copyExtra();
+        boolean hasOverflow = false;
+        for (int value : extraSnapshot) {
+            if (value != 0) {
+                hasOverflow = true;
+                break;
+            }
+        }
+        if (hasOverflow) {
+            tag.putIntArray("inventory_extra", extraSnapshot);
+        }
         tag.putInt("energy", this.energy);
         tag.putDouble("progress", this.progress);
     }
@@ -587,9 +587,32 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
         if (tag.contains("inventory")) {
             this.inventory.deserializeNBT(tag.getCompound("inventory"));
         }
+        if (tag.contains("inventory_extra")) {
+            this.inventory.applyExtra(readIntList(tag, "inventory_extra"));
+        }
         this.energy = tag.getInt("energy");
         this.progress = tag.getDouble("progress");
         this.readSyncTag(tag);
+    }
+
+    /**
+     * Reads an integer sequence from NBT. Both a real int array ({@code [I;1,2,3]}) and a plain list of
+     * ints ({@code [1,2,3]}) are accepted, so hand written command or datapack data cannot silently be
+     * dropped because of a missing type prefix.
+     */
+    private static int[] readIntList(CompoundTag tag, String key) {
+        if (tag.contains(key, Tag.TAG_INT_ARRAY)) {
+            return tag.getIntArray(key);
+        }
+        if (tag.contains(key, Tag.TAG_LIST)) {
+            ListTag list = tag.getList(key, Tag.TAG_INT);
+            int[] values = new int[list.size()];
+            for (int i = 0; i < values.length; i++) {
+                values[i] = list.getInt(i);
+            }
+            return values;
+        }
+        return new int[0];
     }
 
     @Override
@@ -628,10 +651,82 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
         return super.getCapability(cap, side);
     }
 
+    /**
+     * The machine inventory. A single {@link ItemStack} can only carry 127 items in 1.20.1 (the count is
+     * stored in a signed byte, both in the save file and on the wire), but the tiers advertise much bigger
+     * stacks (64/128/256/512). Every slot therefore keeps a normal, byte safe visible stack plus a hidden
+     * overflow counter, and all access goes through this handler so that nothing is ever truncated.
+     */
     public class MachineInventory extends ItemStackHandler {
+
+        private final int[] extra;
 
         public MachineInventory(int size) {
             super(size);
+            this.extra = new int[size];
+        }
+
+        /** Items of this slot that do not fit into the visible stack. */
+        public int getExtra(int slot) {
+            return slot >= 0 && slot < this.extra.length ? this.extra[slot] : 0;
+        }
+
+        /** Real amount of items in this slot: visible stack plus overflow. */
+        public int getStored(int slot) {
+            return this.getStackInSlot(slot).getCount() + this.getExtra(slot);
+        }
+
+        public int[] copyExtra() {
+            return this.extra.clone();
+        }
+
+        public void applyExtra(int[] values) {
+            if (values == null) {
+                return;
+            }
+            for (int slot = 0; slot < this.extra.length; slot++) {
+                int requested = slot < values.length ? Math.max(0, values[slot]) : 0;
+                ItemStack visible = this.stacks.get(slot);
+                if (requested <= 0 || visible.isEmpty()) {
+                    // An overflow counter without a visible stack has no item type to restore: drop it.
+                    this.extra[slot] = 0;
+                    continue;
+                }
+                // Rebuilding through write keeps two promises: the total never exceeds the slot capacity
+                // and a non empty overflow always comes with a byte safe (127) visible stack.
+                this.write(slot, visible, Math.min(this.capacityOf(slot), visible.getCount() + requested));
+            }
+        }
+
+        /** Total amount this slot may hold, visible stack plus overflow. */
+        public int capacityOf(int slot) {
+            CrystalMultiplierBlockEntity machine = CrystalMultiplierBlockEntity.this;
+            if (slot == machine.getSeedSlot()) {
+                return Math.max(1, machine.getSeedCapacity());
+            }
+            if (slot >= machine.getOutputStart() && slot < machine.getOutputEnd()) {
+                return Math.max(1, machine.getOutputStackLimit());
+            }
+            // One upgrade card per upgrade slot, otherwise counting the cards would lie.
+            return 1;
+        }
+
+        /**
+         * Writes a total amount into a slot, splitting it into a byte safe visible stack plus overflow.
+         * The invariant this relies on: whenever the overflow is not empty the visible stack is full
+         * ({@link #MAX_STACK_COUNT}), so vanilla menu code can never grow it past the byte limit.
+         */
+        private void write(int slot, ItemStack prototype, int stored) {
+            int total = Math.max(0, Math.min(this.capacityOf(slot), stored));
+            if (total <= 0 || prototype.isEmpty()) {
+                this.stacks.set(slot, ItemStack.EMPTY);
+                this.extra[slot] = 0;
+            } else {
+                int visible = Math.min(total, MAX_STACK_COUNT);
+                this.stacks.set(slot, prototype.copyWithCount(visible));
+                this.extra[slot] = total - visible;
+            }
+            this.onContentsChanged(slot);
         }
 
         @Override
@@ -647,28 +742,85 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
 
         @Override
         public int getSlotLimit(int slot) {
-            if (slot == CrystalMultiplierBlockEntity.this.getSeedSlot()) {
-                return CrystalMultiplierBlockEntity.this.getSeedCapacity();
-            }
-            if (slot >= CrystalMultiplierBlockEntity.this.getOutputStart()
-                    && slot < CrystalMultiplierBlockEntity.this.getOutputEnd()) {
-                return CrystalMultiplierBlockEntity.this.getOutputStackLimit();
-            }
-            // One upgrade card per upgrade slot, otherwise counting the cards would lie.
-            return 1;
+            return this.capacityOf(slot);
         }
 
         @Override
         public int getStackLimit(int slot, ItemStack stack) {
+            int capacity = this.capacityOf(slot);
             if (slot == CrystalMultiplierBlockEntity.this.getSeedSlot()) {
-                // The seed slot deliberately ignores the vanilla 64 item cap so upgrades/tiers can raise it.
-                return CrystalMultiplierBlockEntity.this.getSeedCapacity();
+                return capacity;
             }
             if (slot >= CrystalMultiplierBlockEntity.this.getOutputStart()
                     && slot < CrystalMultiplierBlockEntity.this.getOutputEnd()) {
-                return CrystalMultiplierBlockEntity.this.limitFor(stack);
+                int itemMax = stack.getMaxStackSize();
+                return Math.max(1, Math.min(capacity, itemMax >= 64 ? capacity : itemMax));
             }
             return 1;
+        }
+
+        @Override
+        public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
+            if (stack.isEmpty() || !this.isItemValid(slot, stack)) {
+                return stack;
+            }
+            return this.insertUnchecked(slot, stack, simulate);
+        }
+
+        /** Insert that skips {@link #isItemValid}: the machine itself fills its output slots with this. */
+        public ItemStack insertUnchecked(int slot, ItemStack stack, boolean simulate) {
+            if (stack.isEmpty() || slot < 0 || slot >= this.getSlots()) {
+                return stack;
+            }
+            ItemStack existing = this.getStackInSlot(slot);
+            if (!existing.isEmpty() && !ItemStack.isSameItemSameTags(existing, stack)) {
+                return stack;
+            }
+            int stored = existing.getCount() + this.getExtra(slot);
+            int space = this.capacityOf(slot) - stored;
+            if (space <= 0) {
+                return stack;
+            }
+            int moved = Math.min(space, stack.getCount());
+            if (moved <= 0) {
+                return stack;
+            }
+            if (!simulate) {
+                this.write(slot, stack, stored + moved);
+            }
+            ItemStack remainder = stack.copy();
+            remainder.shrink(moved);
+            return remainder;
+        }
+
+        @Override
+        public ItemStack extractItem(int slot, int amount, boolean simulate) {
+            ItemStack existing = this.getStackInSlot(slot);
+            if (existing.isEmpty() || amount <= 0) {
+                return ItemStack.EMPTY;
+            }
+            int stored = existing.getCount() + this.getExtra(slot);
+            // Hand out at most one byte safe stack per call, so pipes and menus never get a broken stack.
+            int perStack = Math.max(1, Math.min(MAX_STACK_COUNT, existing.getMaxStackSize()));
+            int moved = Math.min(Math.min(amount, perStack), stored);
+            if (moved <= 0) {
+                return ItemStack.EMPTY;
+            }
+            if (!simulate) {
+                this.write(slot, existing, stored - moved);
+            }
+            return existing.copyWithCount(moved);
+        }
+
+        @Override
+        public void setStackInSlot(int slot, ItemStack stack) {
+            if (stack.isEmpty()) {
+                this.write(slot, ItemStack.EMPTY, 0);
+                return;
+            }
+            // Keep the overflow of a matching stack, otherwise a plain slot click would eat it.
+            int kept = ItemStack.isSameItemSameTags(this.getStackInSlot(slot), stack) ? this.getExtra(slot) : 0;
+            this.write(slot, stack, stack.getCount() + kept);
         }
 
         @Override
