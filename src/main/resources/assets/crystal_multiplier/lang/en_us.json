@@ -18,5 +18,9 @@
   "jei.crystal_multiplier.category": "Crystal Multiplication",
   "jei.crystal_multiplier.seed": "Seed (not consumed)",
   "jei.crystal_multiplier.energy": "Energy: %s FE/t",
-  "jei.crystal_multiplier.time": "Time: %ss"
+  "jei.crystal_multiplier.time": "Time: %ss",
+  "gui.crystal_multiplier.parallel": "Parallel: %s",
+  "gui.crystal_multiplier.per_parallel": "%s crystals = 1 parallel lane",
+  "gui.crystal_multiplier.seed_invalid": "Need a multiple of %s crystals",
+  "gui.crystal_multiplier.seed_tip": "The seed is never consumed"
 }

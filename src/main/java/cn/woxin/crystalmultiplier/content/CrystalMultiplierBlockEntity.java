@@ -29,6 +29,7 @@ import net.minecraftforge.registries.ForgeRegistries;
 import javax.annotation.Nullable;
 
 import cn.woxin.crystalmultiplier.CrystalMultiplierMod;
+import cn.woxin.crystalmultiplier.config.CrystalMultiplierConfig;
 import cn.woxin.crystalmultiplier.menu.CrystalMultiplierMenu;
 
 /**
@@ -46,7 +47,13 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
     private static final int DATA_COST = 4;
     private static final int DATA_ACTIVE = 5;
     private static final int DATA_TIER = 6;
-    private static final int DATA_COUNT = 7;
+    private static final int DATA_PARALLEL = 7;
+    private static final int DATA_SEED_OK = 8;
+    private static final int DATA_PER_PARALLEL = 9;
+    private static final int DATA_COUNT = 10;
+
+    /** Hard output slot cap, used for the space checks of every parallel lane. */
+    private static final int OUTPUT_STACK_LIMIT = 64;
 
     private final CrystalTier tier;
     private final MachineInventory inventory;
@@ -56,6 +63,9 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
     private int ticksRequired;
     private int energyPerTick;
     private boolean active;
+    private int parallelism;
+    private int perParallel = 16;
+    private boolean seedValid;
 
     private final int[] syncedData = new int[DATA_COUNT];
 
@@ -175,6 +185,9 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
             case DATA_COST -> this.energyPerTick;
             case DATA_ACTIVE -> this.active ? 1 : 0;
             case DATA_TIER -> this.tier.ordinal();
+            case DATA_PARALLEL -> this.parallelism;
+            case DATA_SEED_OK -> this.seedValid ? 1 : 0;
+            case DATA_PER_PARALLEL -> this.perParallel;
             default -> 0;
         };
     }
@@ -241,6 +254,40 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
         return this.active;
     }
 
+    /** Currently running parallel lanes, driven purely by the seed stack size. */
+    public int getParallelism() {
+        return this.parallelism;
+    }
+
+    /** False when the seed stack size is not a multiple of the crystals per parallel lane. */
+    public boolean isSeedValid() {
+        return this.seedValid;
+    }
+
+    /** How many crystals of one kind make up a single parallel lane. */
+    public int getCrystalsPerParallel(@Nullable CrystalMultiplicationRecipe recipe) {
+        int fromRecipe = recipe == null ? 0 : recipe.getCrystalsPerParallel();
+        int per = fromRecipe > 0 ? fromRecipe : CrystalMultiplierConfig.crystalsPerParallel();
+        return Math.max(1, per);
+    }
+
+    /** Seed slot capacity: base value plus the bonus of every inserted upgrade card. */
+    public int getSeedCapacity() {
+        int upgrades = 0;
+        for (int slot = this.getUpgradeStart(); slot < this.getUpgradeEnd(); slot++) {
+            if (!this.inventory.getStackInSlot(slot).isEmpty()) {
+                upgrades++;
+            }
+        }
+        int capacity = CrystalMultiplierConfig.baseSeedCapacity()
+                + CrystalMultiplierConfig.seedCapacityPerUpgrade() * upgrades;
+        return Math.max(1, Math.min(CrystalMultiplierConfig.maxSeedCapacity(), capacity));
+    }
+
+    public static int outputStackLimit() {
+        return OUTPUT_STACK_LIMIT;
+    }
+
     /* ------------------------------------------------------------------ upgrades */
 
     public static boolean isUpgradeItem(ItemStack stack) {
@@ -296,17 +343,45 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
         double speedFactor = 1.0D + 0.5D * speedUpgrades;
         double energyPenalty = 1.0D + 0.75D * speedUpgrades;
         double energyEfficiency = 1.0D + 0.5D * energyUpgrades;
+        double baseSpeed = Math.max(0.01D, CrystalMultiplierConfig.baseSpeedMultiplier());
 
         CrystalMultiplicationRecipe recipe = this.findRecipe();
+        ItemStack seed = this.inventory.getStackInSlot(0);
+        int perParallel = this.getCrystalsPerParallel(recipe);
+
+        // The seed stack is the only thing that decides what and how much the machine produces.
+        // It is never consumed, it may only contain one crystal kind (a single slot cannot mix items)
+        // and its size has to be a multiple of crystalsPerParallel, every multiple being one parallel lane.
+        this.seedValid = !seed.isEmpty() && seed.getCount() % perParallel == 0;
+        int lanes = this.seedValid
+                ? Math.min(CrystalMultiplierConfig.maxParallel(), seed.getCount() / perParallel)
+                : 0;
+        this.parallelism = lanes;
+        this.perParallel = perParallel;
+
         boolean working = false;
 
-        if (recipe != null) {
+        if (recipe != null && lanes > 0) {
             ItemStack result = recipe.getResultItem(this.level.registryAccess());
-            if (this.canAccept(result)) {
-                this.ticksRequired = Math.max(1,
-                        (int) Math.round(recipe.getTicks() / (this.tier.getSpeedMultiplier() * speedFactor)));
-                this.energyPerTick = Math.max(1, (int) Math.round(recipe.getEnergyPerTick()
-                        * this.tier.getSpeedMultiplier() * energyPenalty / energyEfficiency));
+            int amount = result.getCount() * lanes;
+            if (this.canAccept(result, amount)) {
+                // The base speed factor is applied at exactly one place and shows up in both the tick
+                // count and the per tick energy draw, so the FE cost of one operation stays constant
+                // while the machine itself just runs faster. Parallel lanes multiply the output here,
+                // nowhere else, so nothing can be applied twice.
+                int baseTicks = Math.max(1, (int) Math.round(recipe.getTicks()
+                        / (this.tier.getSpeedMultiplier() * baseSpeed * speedFactor)));
+                int baseEnergy = Math.max(1, (int) Math.round(recipe.getEnergyPerTick() * lanes
+                        * this.tier.getSpeedMultiplier() * baseSpeed * energyPenalty / energyEfficiency));
+                if (CrystalMultiplierConfig.oneTickOutput()) {
+                    // Optional global switch: one finished batch per tick, but the whole FE cost of that
+                    // operation is paid inside that single tick, so the cost per crystal never changes.
+                    this.ticksRequired = 1;
+                    this.energyPerTick = (int) Math.min(Integer.MAX_VALUE, (long) baseEnergy * baseTicks);
+                } else {
+                    this.ticksRequired = baseTicks;
+                    this.energyPerTick = baseEnergy;
+                }
                 if (this.energy >= this.energyPerTick) {
                     this.energy -= this.energyPerTick;
                     this.progress += 1.0D;
@@ -314,7 +389,7 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
                     this.setChanged();
                     if (this.progress >= this.ticksRequired) {
                         this.progress = 0.0D;
-                        this.pushResult(result);
+                        this.pushResult(result, amount);
                     }
                 }
             } else {
@@ -352,36 +427,36 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
         return null;
     }
 
-    private boolean canAccept(ItemStack result) {
-        if (result.isEmpty()) {
+    private boolean canAccept(ItemStack result, int amount) {
+        if (result.isEmpty() || amount <= 0) {
             return false;
         }
-        for (int slot = this.getOutputStart(); slot < this.getOutputEnd(); slot++) {
+        int remaining = amount;
+        for (int slot = this.getOutputStart(); slot < this.getOutputEnd() && remaining > 0; slot++) {
             ItemStack existing = this.inventory.getStackInSlot(slot);
             if (existing.isEmpty()) {
-                return true;
-            }
-            if (ItemStack.isSameItemSameTags(existing, result)
-                    && existing.getCount() + result.getCount() <= Math.min(existing.getMaxStackSize(), 64)) {
-                return true;
+                remaining -= Math.min(OUTPUT_STACK_LIMIT, remaining);
+            } else if (ItemStack.isSameItemSameTags(existing, result)) {
+                remaining -= Math.max(0, OUTPUT_STACK_LIMIT - existing.getCount());
             }
         }
-        return false;
+        return remaining <= 0;
     }
 
-    private void pushResult(ItemStack result) {
-        ItemStack remaining = result.copy();
-        for (int slot = this.getOutputStart(); slot < this.getOutputEnd() && !remaining.isEmpty(); slot++) {
+    private void pushResult(ItemStack result, int amount) {
+        int remaining = amount;
+        for (int slot = this.getOutputStart(); slot < this.getOutputEnd() && remaining > 0; slot++) {
             ItemStack existing = this.inventory.getStackInSlot(slot);
             if (existing.isEmpty()) {
-                this.inventory.setStackInSlot(slot, remaining.copy());
-                remaining = ItemStack.EMPTY;
-            } else if (ItemStack.isSameItemSameTags(existing, remaining)) {
-                int space = Math.min(existing.getMaxStackSize(), 64) - existing.getCount();
-                int moved = Math.min(space, remaining.getCount());
+                int moved = Math.min(OUTPUT_STACK_LIMIT, remaining);
+                this.inventory.setStackInSlot(slot, result.copyWithCount(moved));
+                remaining -= moved;
+            } else if (ItemStack.isSameItemSameTags(existing, result)) {
+                int space = Math.max(0, OUTPUT_STACK_LIMIT - existing.getCount());
+                int moved = Math.min(space, remaining);
                 if (moved > 0) {
                     existing.grow(moved);
-                    remaining.shrink(moved);
+                    remaining -= moved;
                     this.inventory.setStackInSlot(slot, existing);
                 }
             }
@@ -465,9 +540,18 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
         @Override
         public int getSlotLimit(int slot) {
             if (slot == CrystalMultiplierBlockEntity.this.getSeedSlot()) {
-                return 1;
+                return CrystalMultiplierBlockEntity.this.getSeedCapacity();
             }
-            return 64;
+            return OUTPUT_STACK_LIMIT;
+        }
+
+        @Override
+        public int getStackLimit(int slot, ItemStack stack) {
+            if (slot == CrystalMultiplierBlockEntity.this.getSeedSlot()) {
+                // The seed slot deliberately ignores the vanilla 64 item cap so upgrades can raise it.
+                return CrystalMultiplierBlockEntity.this.getSeedCapacity();
+            }
+            return Math.min(getSlotLimit(slot), stack.getMaxStackSize());
         }
 
         @Override

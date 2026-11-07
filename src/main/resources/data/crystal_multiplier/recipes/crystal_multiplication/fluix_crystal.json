@@ -8,5 +8,6 @@
     "count": 2
   },
   "energy_per_tick": 280,
-  "ticks": 240
+  "ticks": 240,
+  "crystals_per_parallel": 16
 }

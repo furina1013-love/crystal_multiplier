@@ -34,14 +34,29 @@ public class CrystalMultiplicationRecipe implements Recipe<Container> {
     private final ItemStack result;
     private final int energyPerTick;
     private final int ticks;
+    private final int crystalsPerParallel;
 
     public CrystalMultiplicationRecipe(ResourceLocation id, Ingredient seed, ItemStack result,
                                        int energyPerTick, int ticks) {
+        this(id, seed, result, energyPerTick, ticks, 0);
+    }
+
+    public CrystalMultiplicationRecipe(ResourceLocation id, Ingredient seed, ItemStack result,
+                                       int energyPerTick, int ticks, int crystalsPerParallel) {
         this.id = id;
         this.seed = seed;
         this.result = result;
         this.energyPerTick = Math.max(1, energyPerTick);
         this.ticks = Math.max(1, ticks);
+        this.crystalsPerParallel = Math.max(0, crystalsPerParallel);
+    }
+
+    /**
+     * How many crystals of the seed kind form one parallel lane.
+     * 0 means "use the global config value".
+     */
+    public int getCrystalsPerParallel() {
+        return this.crystalsPerParallel;
     }
 
     public Ingredient getSeed() {
@@ -118,7 +133,8 @@ public class CrystalMultiplicationRecipe implements Recipe<Container> {
             ItemStack result = new ItemStack(ForgeRegistries.ITEMS.getValue(itemId), count);
             int energyPerTick = GsonHelper.getAsInt(json, "energy_per_tick", 200);
             int ticks = GsonHelper.getAsInt(json, "ticks", 200);
-            return new CrystalMultiplicationRecipe(id, seed, result, energyPerTick, ticks);
+            int crystalsPerParallel = GsonHelper.getAsInt(json, "crystals_per_parallel", 0);
+            return new CrystalMultiplicationRecipe(id, seed, result, energyPerTick, ticks, crystalsPerParallel);
         }
 
         @Nullable
@@ -128,7 +144,8 @@ public class CrystalMultiplicationRecipe implements Recipe<Container> {
             ItemStack result = buffer.readItem();
             int energyPerTick = buffer.readVarInt();
             int ticks = buffer.readVarInt();
-            return new CrystalMultiplicationRecipe(id, seed, result, energyPerTick, ticks);
+            int crystalsPerParallel = buffer.readVarInt();
+            return new CrystalMultiplicationRecipe(id, seed, result, energyPerTick, ticks, crystalsPerParallel);
         }
 
         @Override
@@ -137,6 +154,7 @@ public class CrystalMultiplicationRecipe implements Recipe<Container> {
             buffer.writeItem(recipe.result);
             buffer.writeVarInt(recipe.energyPerTick);
             buffer.writeVarInt(recipe.ticks);
+            buffer.writeVarInt(recipe.crystalsPerParallel);
         }
     }
 }

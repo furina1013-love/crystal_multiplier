@@ -45,7 +45,18 @@ public class CrystalMultiplierMenu extends AbstractContainerMenu {
         this.tier = blockEntity.getTier();
 
         IItemHandler inventory = blockEntity.getInventory();
-        this.addSlot(new SlotItemHandler(inventory, blockEntity.getSeedSlot(), SEED_X, SEED_Y));
+        this.addSlot(new SlotItemHandler(inventory, blockEntity.getSeedSlot(), SEED_X, SEED_Y) {
+            @Override
+            public int getMaxStackSize() {
+                return blockEntity.getSeedCapacity();
+            }
+
+            @Override
+            public int getMaxStackSize(ItemStack stack) {
+                // The seed slot ignores the vanilla 64 cap: upgrades can enlarge it, see the config.
+                return blockEntity.getSeedCapacity();
+            }
+        });
 
         for (int index = 0; index < this.tier.getOutputSlots(); index++) {
             int column = index % OUTPUT_COLUMNS;
@@ -110,6 +121,19 @@ public class CrystalMultiplierMenu extends AbstractContainerMenu {
 
     public boolean isActive() {
         return this.data.get(5) != 0;
+    }
+
+    public int getParallelism() {
+        return this.data.get(7);
+    }
+
+    public boolean isSeedValid() {
+        return this.data.get(8) != 0;
+    }
+
+    public int getCrystalsPerParallel() {
+        int per = this.data.get(9);
+        return per <= 0 ? 16 : per;
     }
 
     public int getMachineSlotCount() {

@@ -18,5 +18,9 @@
   "jei.crystal_multiplier.category": "水晶增殖",
   "jei.crystal_multiplier.seed": "种子（不消耗）",
   "jei.crystal_multiplier.energy": "耗能: %s FE/t",
-  "jei.crystal_multiplier.time": "耗时: %s秒"
+  "jei.crystal_multiplier.time": "耗时: %s秒",
+  "gui.crystal_multiplier.parallel": "并行: %s",
+  "gui.crystal_multiplier.per_parallel": "每 %s 个水晶 = 1 条并行",
+  "gui.crystal_multiplier.seed_invalid": "需要 %s 的倍数个水晶",
+  "gui.crystal_multiplier.seed_tip": "种子不会被消耗"
 }

@@ -4,6 +4,7 @@ import cn.woxin.crystalmultiplier.content.CrystalMultiplierBlock;
 import cn.woxin.crystalmultiplier.content.CrystalMultiplierBlockEntity;
 import cn.woxin.crystalmultiplier.content.CrystalMultiplicationRecipe;
 import cn.woxin.crystalmultiplier.content.CrystalTier;
+import cn.woxin.crystalmultiplier.config.CrystalMultiplierConfig;
 import cn.woxin.crystalmultiplier.menu.CrystalMultiplierMenu;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
@@ -20,7 +21,9 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.material.MapColor;
 import net.minecraftforge.common.extensions.IForgeMenuType;
 import net.minecraftforge.eventbus.api.IEventBus;
+import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.config.ModConfig;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -87,6 +90,8 @@ public class CrystalMultiplierMod {
     }
 
     public CrystalMultiplierMod() {
+        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, CrystalMultiplierConfig.SPEC,
+                "crystal_multiplier-common.toml");
         IEventBus modBus = FMLJavaModLoadingContext.get().getModEventBus();
         BLOCKS.register(modBus);
         ITEMS.register(modBus);

@@ -36,6 +36,9 @@ public class CrystalMultiplierScreen extends AbstractContainerScreen<CrystalMult
     private static final int BAR_Y = 33;
     private static final int BAR_W = 26;
     private static final int BAR_H = 16;
+    private static final int STATUS_X = 8;
+    private static final int STATUS_Y = 53;
+    private static final int STATUS_ERROR = 0xFFFF5555;
 
     private final CrystalTier tier;
 
@@ -59,6 +62,24 @@ public class CrystalMultiplierScreen extends AbstractContainerScreen<CrystalMult
 
         graphics.drawString(this.font, this.tier.getDisplayName(), x + 8, y + 5, this.tier.getTintColor(), false);
 
+        int per = this.menu.getCrystalsPerParallel();
+        if (this.menu.isSeedValid()) {
+            graphics.drawString(this.font, Component.translatable("gui.crystal_multiplier.parallel",
+                    this.menu.getParallelism()), x + STATUS_X, y + STATUS_Y, TEXT, false);
+        } else {
+            graphics.drawString(this.font, Component.translatable("gui.crystal_multiplier.seed_invalid", per),
+                    x + STATUS_X, y + STATUS_Y, STATUS_ERROR, false);
+        }
+
+        Slot seedSlot = this.menu.slots.get(0);
+        if (this.isHovering(seedSlot.x, seedSlot.y, 16, 16, mouseX, mouseY)) {
+            List<Component> lines = new ArrayList<>();
+            lines.add(Component.translatable("gui.crystal_multiplier.per_parallel", per));
+            lines.add(Component.translatable("gui.crystal_multiplier.parallel", this.menu.getParallelism()));
+            lines.add(Component.translatable("gui.crystal_multiplier.seed_tip"));
+            graphics.renderTooltip(this.font, lines, Optional.empty(), mouseX, mouseY);
+        }
+
         if (this.isHovering(ENERGY_X, ENERGY_Y, ENERGY_W, ENERGY_H, mouseX, mouseY)) {
             List<Component> lines = new ArrayList<>();
             lines.add(Component.translatable("gui.crystal_multiplier.energy",
@@ -72,6 +93,7 @@ public class CrystalMultiplierScreen extends AbstractContainerScreen<CrystalMult
             lines.add(Component.translatable("gui.crystal_multiplier.progress", this.menu.getProgressPercent()));
             lines.add(Component.translatable("gui.crystal_multiplier.time",
                     String.format(java.util.Locale.ROOT, "%.1f", this.menu.getTicksRequired() / 20.0D)));
+            lines.add(Component.translatable("gui.crystal_multiplier.parallel", this.menu.getParallelism()));
             if (this.menu.isActive()) {
                 lines.add(Component.translatable("gui.crystal_multiplier.active"));
             } else {
