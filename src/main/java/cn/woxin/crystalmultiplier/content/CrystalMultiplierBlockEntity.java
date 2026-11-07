@@ -27,6 +27,7 @@ import mekanism.common.tile.component.TileComponentEjector;
 import mekanism.common.tile.component.config.ConfigInfo;
 import mekanism.common.tile.component.config.DataType;
 import mekanism.common.tile.component.config.slot.InventorySlotInfo;
+import mekanism.api.RelativeSide;
 import mekanism.common.tile.interfaces.ISideConfiguration;
 import mekanism.common.util.MekanismUtils;
 import net.minecraft.core.BlockPos;
@@ -48,7 +49,7 @@ import org.jetbrains.annotations.Nullable;
  */
 public class CrystalMultiplierBlockEntity extends TileEntityMekanism implements ISideConfiguration {
 
-    /** Kept for the menu/screen code: one visible stack can never exceed this. */
+    /** Kept for the menu/screen code: upper bound for a single simulated extraction. */
     public static final int MAX_STACK_COUNT = CrystalSlot.MAX_VISIBLE;
 
     /** Seed slot, followed by the output slots. Never initialise this here: super() calls getInitialInventory first. */
@@ -132,14 +133,15 @@ public class CrystalMultiplierBlockEntity extends TileEntityMekanism implements 
         this.configComponent = new TileComponentConfig(this, TransmissionType.ITEM, TransmissionType.ENERGY);
         ConfigInfo itemConfig = this.configComponent.getConfig(TransmissionType.ITEM);
         if (itemConfig != null) {
-            List<IInventorySlot> inputs = List.of(this.seedSlot);
+            // The machine only ever outputs items; the seed slot is internal and must not appear
+            // as an item input in the side configuration. Energy is handled by its own config below.
             List<IInventorySlot> outputs = List.copyOf(this.outputSlots);
-            List<IInventorySlot> io = new ArrayList<>(inputs);
-            io.addAll(outputs);
-            itemConfig.addSlotInfo(DataType.INPUT, new InventorySlotInfo(true, false, inputs));
             itemConfig.addSlotInfo(DataType.OUTPUT, new InventorySlotInfo(false, true, outputs));
-            itemConfig.addSlotInfo(DataType.INPUT_OUTPUT, new InventorySlotInfo(true, true, io));
             itemConfig.setDefaults();
+            // Expose item output on every side except the back, which stays the energy input.
+            itemConfig.setDataType(DataType.OUTPUT, RelativeSide.FRONT, RelativeSide.LEFT,
+                    RelativeSide.RIGHT, RelativeSide.TOP, RelativeSide.BOTTOM);
+            itemConfig.setEjecting(true);
         }
         this.configComponent.setupInputConfig(TransmissionType.ENERGY, this.energyContainer);
         this.ejectorComponent = new TileComponentEjector(this).setOutputData(this.configComponent, TransmissionType.ITEM);

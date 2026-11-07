@@ -12,16 +12,15 @@ import org.jetbrains.annotations.Nullable;
 /**
  * A Mekanism machine slot that can hold more than one ItemStack worth of items.
  *
- * <p>1.20.1 stores an item count in a signed byte, both in the save file and on the wire, so one
- * visible stack can never exceed 127 items. Tiers advertise 64/128/256/512 items per slot, so the
- * part above {@link #MAX_VISIBLE} is kept in a hidden overflow counter. The invariant is that a
- * non empty overflow always comes with a full (127) visible stack, which keeps vanilla menu code
- * from ever growing the visible stack past the byte limit.</p>
+ * <p>Vanilla 1.20.1 stores an item count in a signed byte, so the mod bundles small ItemStack and
+ * FriendlyByteBuf mixins to keep large counts in NBT and on the wire. A visible stack can therefore
+ * carry the full tier capacity; {@link #MAX_VISIBLE} is only the absolute fallback used if a future
+ * code path ever needs a hidden overflow above 4096.</p>
  */
 public class CrystalSlot extends BasicInventorySlot {
 
-    /** No ItemStack may carry more than this in 1.20.1. */
-    public static final int MAX_VISIBLE = 127;
+    /** Absolute safety ceiling for one visible stack, well above every tier capacity. */
+    public static final int MAX_VISIBLE = 4096;
 
     private final IntSupplier capacity;
     private final boolean output;
@@ -69,8 +68,8 @@ public class CrystalSlot extends BasicInventorySlot {
 
     @Override
     public int getLimit(ItemStack stack) {
-        // Anything exposed to the outside world must stay byte safe.
-        return Math.min(MAX_VISIBLE, this.getCapacity());
+        // The bundled ItemStack mixin lets one visible stack hold the full tier capacity.
+        return this.getCapacity();
     }
 
     private ItemStack insert(ItemStack stack, Action action) {
@@ -117,7 +116,7 @@ public class CrystalSlot extends BasicInventorySlot {
         if (!this.output && automationType == AutomationType.EXTERNAL) {
             return ItemStack.EMPTY;
         }
-        int perStack = Math.max(1, Math.min(MAX_VISIBLE, this.current.getMaxStackSize()));
+        int perStack = Math.max(1, this.current.getMaxStackSize());
         int moved = Math.min(Math.min(amount, perStack), this.getStoredCount());
         if (moved <= 0) {
             return ItemStack.EMPTY;
@@ -152,7 +151,8 @@ public class CrystalSlot extends BasicInventorySlot {
         // overflow when the same item is set again by vanilla slot code. A count above the item
         // limit is a serialized total and must replace the overflow instead of being added to it.
         int incoming = stack.getCount();
-        int kept = incoming <= stack.getMaxStackSize() && ItemStack.isSameItemSameTags(this.current, stack)
+        int vanillaLimit = stack.getItem().getMaxStackSize();
+        int kept = incoming <= vanillaLimit && ItemStack.isSameItemSameTags(this.current, stack)
                 ? this.extra : 0;
         this.write(stack, incoming + kept);
     }

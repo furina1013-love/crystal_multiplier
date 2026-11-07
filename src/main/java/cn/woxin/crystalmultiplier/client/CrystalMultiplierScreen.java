@@ -45,8 +45,8 @@ public class CrystalMultiplierScreen extends GuiConfigurableTile<CrystalMultipli
 
     @Override
     protected void drawForegroundText(GuiGraphics guiGraphics, int mouseX, int mouseY) {
+        // renderTitleText already draws the centered title; drawing this.title again would duplicate it.
         this.renderTitleText(guiGraphics);
-        this.drawString(guiGraphics, this.title, this.titleLabelX, this.titleLabelY, this.titleTextColor());
         super.drawForegroundText(guiGraphics, mouseX, mouseY);
     }
 

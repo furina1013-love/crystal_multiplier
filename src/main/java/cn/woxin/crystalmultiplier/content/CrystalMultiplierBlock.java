@@ -43,7 +43,7 @@ public class CrystalMultiplierBlock extends BlockTile<CrystalMultiplierBlockEnti
                 for (CrystalSlot slot : machine.getMachineSlots()) {
                     ItemStack prototype = slot.getStack();
                     while (!prototype.isEmpty() && slot.getStoredCount() > 0) {
-                        int maxStack = Math.max(1, prototype.getMaxStackSize());
+                        int maxStack = Math.max(1, prototype.getItem().getMaxStackSize());
                         int amount = Math.min(slot.getStoredCount(), maxStack);
                         ItemStack extracted = slot.extractItem(amount, Action.EXECUTE, AutomationType.MANUAL);
                         if (extracted.isEmpty()) {

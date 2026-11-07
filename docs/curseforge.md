@@ -31,8 +31,8 @@ An AE2-flavoured multiplication machine for crystal production lines. Instead of
 | Ultimate | 8x | 12,800,000 FE | 1,280,000 FE/t | 12 | 8 speed + 8 energy | 512 | 512 |
 
 Tiers change speed, energy handling, output slot counts and stack limits; the upgrade window comes from Mekanism itself, so every tier accepts 8 speed and 8 energy cards. Every tier still multiplies only one crystal type at a time.
-1.20.1 stores item counts in a signed byte (127 max), so any capacity above 127 is implemented as **visible stack (up to 127) + hidden overflow counter**:
-a slot holding 300 crystals shows 127 on the icon, prints the real amount in the slot corner and shows "Stored: 300 / 512" on hover. Nothing is lost or truncated.
+Since 1.6.0 a small `ItemStack` / `FriendlyByteBuf` mixin stores the real count in NBT and writes it as a VarInt on the network,
+so a single stack can hold 128 / 256 / 512 items directly. Seed and output slots use real large stacks; only values above 4096 fall back to the overflow counter.
 
 ---
 
@@ -44,7 +44,7 @@ a slot holding 300 crystals shows 127 on the icon, prints the real amount in the
 4. Seeds are **never consumed**. The machine only stalls when the output slots are full.
 5. Seed slot capacity comes from the tier (64 / 128 / 256 / 512) and gains **+16 per inserted speed or energy card** (global ceiling `seedSlotCapCeiling`, 1024 by default).
 6. Seed and output stacks may exceed 127, so a fully loaded Ultimate machine holds 512 seeds = **32 parallel lanes**.
-7. Everything above 127 lives in a hidden overflow counter: shift-click whole stacks, hoppers or pipes to fill a slot completely; extraction gives at most one stack (<=127) at a time.
+7. Large stacks are stored directly by the mixin: shift-click whole stacks, hoppers or pipes can fill a slot completely; extraction follows the item's own stack limit.
 
 ---
 
@@ -168,12 +168,12 @@ energy tab and redstone tab all come from Mekanism. This mod only adds the verti
 real-amount overlay on slots.
 
 - **Upgrade window**: click the upgrade card icon in the top right; 8 speed and 8 energy cards, just drag them in.
-- **Side configuration**: click the side config icon to set each face to input, output or disabled for items and energy; output slots eject by default.
+- **Side configuration**: click the side config icon; items offer output only, energy offers input only, and output slots eject by default.
 - **Energy tab** shows stored / capacity / draw per tick. **Redstone tab** offers ignore / high / low / pulse.
 - Layout: GUI 176x166, seed slot (26,40), progress arrow (52,45) 32x8, output slots in 4 columns x 3 rows (x = 88/106/124/142, y = 20/38/56),
   energy bar (164,15), player inventory (8,84), hotbar (8,142).
-- Slots holding more than 127 items print the real amount in the bottom-right corner and show "Seed: stored / capacity" or "Stored: stored / capacity" on hover.
-- **Shift click** moves a whole seed stack (including the hidden overflow above 127) and empties an output slot completely in one go.
+- Slots holding more than 127 items still show their real count; hover shows "Seed: stored / capacity" or "Stored: stored / capacity".
+- **Shift click** moves a whole seed stack and empties an output slot completely in one go.
 
 ### JEI
 
@@ -185,6 +185,9 @@ progress arrow inside the machine (52,45,32,8) opens the matching recipe.
 
 ## Changelog
 
+- **1.6.0** — Added `ItemStack` / `FriendlyByteBuf` mixins so NBT and network packets keep counts above 127; seed and output slots now use real large stacks.
+  Side configuration exposes item output and energy input only and item auto-ejection is enabled. Fixed the duplicated title at the top of the GUI.
+  Block textures keep the 1.0.0 grey-steel base with visible per-tier recolouring and tier pips.
 - **1.5.0** — The machine is a real Mekanism machine now: blocks use `BlockTile` + `BlockTileBuilder`, the block entity extends
   `TileEntityMekanism`, and the screen is Mekanism's `GuiConfigurableTile` with its upgrade window, side configuration, energy tab
   and redstone tab; only speed and energy cards are accepted. The hand-drawn GUI textures were removed and block textures reverted
@@ -217,7 +220,7 @@ progress arrow inside the machine (52,45,32,8) opens the matching recipe.
 - **Will addons that change output speed conflict?** No. Speed and yield are computed entirely inside this mod and never read modified values from other mods.
 - **Automatable?** Yes. Output slots can be extracted with hoppers or pipes; the seed slot accepts input and never loses its contents.
 - **How do upgrade cards stack?** With Mekanism's own curve: effect = `maxUpgradeMultiplier` ^ (installed / 8). With the default 10, 8 speed cards give 10x speed at 100x the draw per tick, 8 energy cards give 1/10 the draw, and 8 + 8 lands back at the base cost.
-- **Why does the slot show 127 when the tooltip says 512?** Minecraft 1.20.1 cannot store more than 127 items in one stack, so the rest is kept in a hidden overflow counter and printed in the slot corner. The machine counts the real total.
+- **Why can a slot hold more than 127 items?** The bundled `ItemStack` / `FriendlyByteBuf` mixins store the real count in NBT and send it as a VarInt, so large stacks survive saves and container sync. The slot corner and tooltip show the real total.
 
 ---
 

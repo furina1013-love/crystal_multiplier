@@ -14,9 +14,10 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 
 /**
- * Container for the crystal multiplier. The machine slots are Mekanism inventory slots (with a
- * byte safe visible stack and a hidden overflow), so vanilla shift-clicking would only ever move
- * 127 items. The output branch below drains one slot completely in a single shift click.
+ * Container for the crystal multiplier. The machine slots are Mekanism inventory slots backed by
+ * CrystalSlot, whose visible stack can hold the full tier capacity (thanks to the ItemStack mixin).
+ * The output branch below still drains a slot completely in one shift click so large stacks are
+ * never split into several clicks.
  */
 public class CrystalMultiplierMenu extends MekanismTileContainer<CrystalMultiplierBlockEntity> {
 
@@ -58,14 +59,14 @@ public class CrystalMultiplierMenu extends MekanismTileContainer<CrystalMultipli
             }
             return this.drainToPlayer(player, this.slots.get(index), machineSlot);
         }
-        // Player -> machine: Mekanism's slot implementation knows about the hidden overflow itself.
+        // Player -> machine: Mekanism's slot implementation delegates to CrystalSlot#insertItem.
         return super.m_7648_(player, index);
     }
 
     /**
-     * Moves the whole stored amount (visible stack plus overflow) into the player inventory. Each
-     * iteration moves at most one byte safe stack, but the loop keeps going until the slot is empty
-     * or the player inventory is full, so a shift click empties output slots holding 512 items too.
+     * Moves the whole stored amount into the player inventory. The loop keeps going until the slot
+     * is empty or the player inventory is full, so a shift click empties output slots holding 512
+     * items too.
      */
     private ItemStack drainToPlayer(Player player, Slot containerSlot, CrystalSlot machineSlot) {
         ItemStack movedTotal = ItemStack.EMPTY;
@@ -81,10 +82,11 @@ public class CrystalMultiplierMenu extends MekanismTileContainer<CrystalMultipli
             if (moved <= 0) {
                 break;
             }
+            ItemStack moving = extracted.copyWithCount(moved);
             machineSlot.extractItem(moved, Action.EXECUTE, AutomationType.MANUAL);
-            containerSlot.onTake(player, extracted.copyWithCount(moved));
+            containerSlot.onTake(player, moving.copy());
             if (movedTotal.isEmpty()) {
-                movedTotal = extracted.copyWithCount(moved);
+                movedTotal = moving;
             } else {
                 movedTotal.grow(moved);
             }

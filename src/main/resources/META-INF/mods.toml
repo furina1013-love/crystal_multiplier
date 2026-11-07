@@ -12,6 +12,9 @@ A Mekanism-styled machine for non-recursive AE2 crystal multiplication.
 用于稳定自动化赛特斯、充能赛特斯、福鲁伊克斯等 AE2 系水晶的增殖机器（种子不消耗，纯 FE 驱动）。
 '''
 
+[[mixins]]
+    config="crystal_multiplier.mixins.json"
+
 [[dependencies.crystal_multiplier]]
     modId="forge"
     mandatory=true
