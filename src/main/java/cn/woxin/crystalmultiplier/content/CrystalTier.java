@@ -10,10 +10,10 @@ import net.minecraft.util.StringRepresentable;
  * more Mekanism upgrade cards.
  */
 public enum CrystalTier implements StringRepresentable {
-    BASIC("basic", 1.0D, 200_000, 3, 4, 40, 0xFF3F76E4, ChatFormatting.GRAY),
-    ADVANCED("advanced", 2.0D, 1_000_000, 6, 6, 70, 0xFF3FBF6A, ChatFormatting.GREEN),
-    ELITE("elite", 4.0D, 4_000_000, 9, 8, 100, 0xFFB03FE4, ChatFormatting.LIGHT_PURPLE),
-    ULTIMATE("ultimate", 8.0D, 20_000_000, 12, 10, 140, 0xFFE43F3F, ChatFormatting.RED);
+    BASIC("basic", 1.0D, 200_000, 3, 4, 2_000, 0xFF3F76E4, ChatFormatting.GRAY),
+    ADVANCED("advanced", 2.0D, 1_000_000, 6, 6, 8_000, 0xFF3FBF6A, ChatFormatting.GREEN),
+    ELITE("elite", 4.0D, 4_000_000, 9, 8, 32_000, 0xFFB03FE4, ChatFormatting.LIGHT_PURPLE),
+    ULTIMATE("ultimate", 8.0D, 20_000_000, 12, 10, 128_000, 0xFFE43F3F, ChatFormatting.RED);
 
     private final String tierName;
     private final double speedMultiplier;

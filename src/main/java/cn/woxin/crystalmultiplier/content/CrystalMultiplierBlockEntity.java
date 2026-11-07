@@ -306,7 +306,7 @@ public class CrystalMultiplierBlockEntity extends BlockEntity implements MenuPro
                 this.ticksRequired = Math.max(1,
                         (int) Math.round(recipe.getTicks() / (this.tier.getSpeedMultiplier() * speedFactor)));
                 this.energyPerTick = Math.max(1, (int) Math.round(recipe.getEnergyPerTick()
-                        * energyPenalty / energyEfficiency / this.tier.getSpeedMultiplier()));
+                        * this.tier.getSpeedMultiplier() * energyPenalty / energyEfficiency));
                 if (this.energy >= this.energyPerTick) {
                     this.energy -= this.energyPerTick;
                     this.progress += 1.0D;

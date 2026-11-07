@@ -13,10 +13,10 @@
       "item": "crystal_multiplier:crystal_multiplier_advanced"
     },
     "M": {
-      "item": "crystal_multiplier:crystal_multiplier_advanced"
+      "item": "mekanism:steel_casing"
     }
   },
   "result": {
-    "item": "crystal_multiplier:elite"
+    "item": "crystal_multiplier:crystal_multiplier_elite"
   }
 }
