@@ -176,17 +176,14 @@ AE2 的物品只用注册名（`ae2:certus_quartz_crystal` 等）与标签访问
 
 ## 授权
 
-本项目以 **GNU Lesser General Public License v3.0**（LGPL-3.0-only，SPDX 标识符 `LGPL-3.0-only`）发布，
-全文见仓库根目录的 `LICENSE`（即 https://www.gnu.org/licenses/lgpl-3.0.txt ）。
+本项目以 **MIT** 协议发布，全文见仓库根目录的 `LICENSE`。
 
-Copyright (C) 2026 woxin。
+Copyright (c) 2026 woxin。
 
-LGPL-3.0 要求：分发本模组的二进制时须同时提供对应源码（本仓库 `main` 分支即完整源码），并允许使用者用修改后的
-同款库替换它（改完重新打包即可，本模组不含任何阻止替换的技术措施）。与 Mekanism / Minecraft / Forge 的交互均通过其公开 API 完成。
+允许商用、修改、再分发，只需保留版权声明与许可声明；本模组按「现状」提供，不附带任何担保。
 
 ## 更新记录
 
-- **1.7.1**：许可证由 MIT 改为 **GNU LGPL v3.0**（`LGPL-3.0-only`）：`LICENSE` 换成 LGPL-3.0 全文，`mods.toml` 的 `license` 字段同步，README / mcmod / CurseForge 文档的授权说明一并更新。功能与 1.7.0 完全一致。
 - **1.7.0**：机器正面贴图换成新美术，**原图不改，只在底边点 1/2/3/4 个档位点**区分四档；
   新增两个「每 tick 出产物」开关：`ejectEveryTick`（本机，**默认开启**）与 `globalEjectEveryTick`（全局，**默认关闭**，
   通过 `EjectorMixin` 把 Mek 弹射器内部 10 tick 的 `tickDelay` 清零），生产速度不受影响；弹射器改为在产出之后 tick，

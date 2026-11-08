@@ -1,4 +1,3 @@
 221119f3a1178ebdfad18e6d7ae81a189bccf2014d402566369a27f55d79290a  crystal_multiplier-1.5.0.jar
 6886bee560b0ce05d1a34069bdb8995ab9076c907b26e1e061bb240535edfbcb  crystal_multiplier-1.6.1.jar
 f335400f21eef88a5fef7cfc5ee9013cf3b704debfabb0cb99bdc8ee0b1bde9f  crystal_multiplier-1.7.0.jar
-d66c05b1dfff5a29a0df7e8795a516383b3969a4f7916266f164aaddc96e003b  crystal_multiplier-1.7.1.jar
