@@ -256,7 +256,9 @@ public class CrystalMultiplierBlockEntity extends TileEntityMekanism implements 
         ItemStack seed = this.seedSlot.getStack();
         int seedCount = this.seedSlot.getStoredCount();
         int perParallel = this.getCrystalsPerParallel(recipe);
-        this.seedValid = !seed.isEmpty() && seedCount % perParallel == 0;
+        // Any seed count at or above one lane is enough: the lanes are the integer division, the
+        // leftovers simply do not form an extra lane (16 / 16 / 16 + 5 leftover = 3 lanes, still runs).
+        this.seedValid = !seed.isEmpty() && seedCount >= perParallel;
         this.parallelism = this.seedValid ? Math.min(CrystalMultiplierConfig.maxParallel(), seedCount / perParallel) : 0;
 
         boolean working = false;
@@ -278,11 +280,16 @@ public class CrystalMultiplierBlockEntity extends TileEntityMekanism implements 
                         / (this.getTier().getSpeedMultiplier() * baseSpeed * speedFactor)));
                 int costPerTick = Math.max(1, (int) Math.round(recipe.getEnergyPerTick() * this.parallelism
                         * this.getTier().getSpeedMultiplier() * baseSpeed * baseEnergy * energyFactor));
-                // The machine always finishes one batch per tick. The tuned recipe duration is not
-                // dropped: the whole operation's energy is folded into that single tick, so a faster
-                // tier or more speed cards still cost / pay exactly what they did before.
-                this.ticksRequired = 1;
-                this.energyPerTick = (int) Math.min(Integer.MAX_VALUE, (long) costPerTick * ticks);
+                if (CrystalMultiplierConfig.oneTickOutput()) {
+                    // One batch per tick (the default). The tuned recipe duration is not dropped: the
+                    // whole operation's energy is folded into that single tick, so a faster tier or
+                    // more speed cards still cost / pay exactly what they did before.
+                    this.ticksRequired = 1;
+                    this.energyPerTick = (int) Math.min(Integer.MAX_VALUE, (long) costPerTick * ticks);
+                } else {
+                    this.ticksRequired = ticks;
+                    this.energyPerTick = costPerTick;
+                }
 
                 int charge = (int) Math.min(this.energyPerTick, this.energyContainer.getEnergy().getValue());
                 if (charge > 0) {

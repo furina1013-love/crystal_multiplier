@@ -6,9 +6,9 @@ import net.minecraftforge.common.ForgeConfigSpec;
  * Common (server side) config of the Crystal Multiplier.
  * Everything the user asked to be tunable lives here: how many crystals form one
  * parallel lane, how big the seed slot is and how fast the machines run.
- * The "one operation per tick" behaviour is no longer a switch: the machine always
- * finishes one batch per tick, and {@code CachedRecipeMixin} applies the same rule to
- * every Mekanism machine.
+ * There are two "one operation per tick" switches: one for this machine (on by
+ * default) and one that also applies the same rule to every Mekanism machine through
+ * {@code CachedRecipeMixin} (off by default).
  */
 public final class CrystalMultiplierConfig {
 
@@ -29,6 +29,8 @@ public final class CrystalMultiplierConfig {
     public static final ForgeConfigSpec.DoubleValue BASE_SPEED_MULTIPLIER;
     public static final ForgeConfigSpec.DoubleValue BASE_ENERGY_MULTIPLIER;
     public static final ForgeConfigSpec.IntValue MAX_UPGRADE_MULTIPLIER;
+    public static final ForgeConfigSpec.BooleanValue ONE_TICK_OUTPUT;
+    public static final ForgeConfigSpec.BooleanValue GLOBAL_ONE_TICK_OUTPUT;
 
     static {
         ForgeConfigSpec.Builder builder = new ForgeConfigSpec.Builder();
@@ -38,7 +40,8 @@ public final class CrystalMultiplierConfig {
 
         CRYSTALS_PER_PARALLEL = builder
                 .comment("How many crystals of one kind must sit in the seed slot to form one parallel lane.",
-                        "The seed slot content must always be a multiple of this value, otherwise the machine idles.",
+                        "The lanes are floor(count / value): leftovers that do not fill a whole lane are",
+                        "simply ignored, the machine keeps running as long as one lane is filled.",
                         "A single recipe may override it with its own \"crystals_per_parallel\" field.")
                 .translation(LANG_PREFIX + ".crystalsPerParallel")
                 .defineInRange("crystalsPerParallel", 16, 1, 64);
@@ -88,6 +91,21 @@ public final class CrystalMultiplierConfig {
                 .translation(LANG_PREFIX + ".maxUpgradeMultiplier")
                 .defineInRange("maxUpgradeMultiplier", 10, 1, 1000);
 
+        ONE_TICK_OUTPUT = builder
+                .comment("Crystal Multiplier only: finish one output batch every tick instead of one batch",
+                        "per recipe duration. The whole operation's energy is still paid inside that tick,",
+                        "so the FE per crystal does not change. Default true.")
+                .translation(LANG_PREFIX + ".oneTickOutput")
+                .define("oneTickOutput", true);
+
+        GLOBAL_ONE_TICK_OUTPUT = builder
+                .comment("Every Mekanism machine that runs on CachedRecipe (own machines, the factory family",
+                        "and addon machines) finishes one operation per tick, while still consuming its inputs",
+                        "and the per operation gas / fluid. This is a big hammer for the whole pack.",
+                        "Default false.")
+                .translation(LANG_PREFIX + ".globalOneTickOutput")
+                .define("globalOneTickOutput", false);
+
         builder.pop();
         SPEC = builder.build();
     }
@@ -96,6 +114,14 @@ public final class CrystalMultiplierConfig {
     }
 
     private static int intOr(ForgeConfigSpec.IntValue value, int fallback) {
+        try {
+            return value.get();
+        } catch (IllegalStateException e) {
+            return fallback;
+        }
+    }
+
+    private static boolean boolOr(ForgeConfigSpec.BooleanValue value, boolean fallback) {
         try {
             return value.get();
         } catch (IllegalStateException e) {
@@ -137,5 +163,15 @@ public final class CrystalMultiplierConfig {
 
     public static int maxUpgradeMultiplier() {
         return intOr(MAX_UPGRADE_MULTIPLIER, 10);
+    }
+
+    /** Crystal Multiplier only switch, on by default. */
+    public static boolean oneTickOutput() {
+        return boolOr(ONE_TICK_OUTPUT, true);
+    }
+
+    /** Global switch that also speeds up every Mekanism machine, off by default. */
+    public static boolean globalOneTickOutput() {
+        return boolOr(GLOBAL_ONE_TICK_OUTPUT, false);
     }
 }

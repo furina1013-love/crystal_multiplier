@@ -1,6 +1,7 @@
 package cn.woxin.crystalmultiplier;
 
 import cn.woxin.crystalmultiplier.config.CrystalMultiplierConfig;
+import cn.woxin.crystalmultiplier.content.AutoCrystalRecipes;
 import cn.woxin.crystalmultiplier.content.CrystalMultiplierBlock;
 import cn.woxin.crystalmultiplier.content.CrystalMultiplierBlockEntity;
 import cn.woxin.crystalmultiplier.content.CrystalMultiplicationRecipe;
@@ -30,6 +31,8 @@ import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.item.crafting.RecipeType;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.AddReloadListenerEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
@@ -127,5 +130,12 @@ public class CrystalMultiplierMod {
         RECIPE_TYPES.register(modBus);
         RECIPE_SERIALIZERS.register(modBus);
         TABS.register(modBus);
+        // Addon crystals (lattra / redstone) have no datapack json: the recipe is generated at
+        // reload time whenever the addon mod and its item are actually present.
+        MinecraftForge.EVENT_BUS.addListener(CrystalMultiplierMod::onAddReloadListeners);
+    }
+
+    private static void onAddReloadListeners(AddReloadListenerEvent event) {
+        event.addListener(new AutoCrystalRecipes(event.getServerResources().getRecipeManager()));
     }
 }

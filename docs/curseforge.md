@@ -40,7 +40,7 @@ Because the item-count network encoding changed, **both client and server must r
 
 ## Parallelism: the seed stack size IS your throughput
 
-1. Put one crystal type in the seed slot. The amount must be a **multiple of 16** (configurable), otherwise the machine idles and the GUI shows a hint.
+1. Put one crystal type in the seed slot. Every 16 crystals (configurable) form one parallel lane; the count is divided down (`20` = one lane plus 4 leftovers) and the machine keeps running.
 2. **Parallel lanes = seed count / 16** — 16 crystals = 1 lane, 32 = 2 lanes, 64 = 4 lanes.
 3. Output *and* energy draw scale with the lane count, so the **FE cost per crystal stays the same** — more seeds simply means more production lines.
 4. Seeds are **never consumed**. The machine only stalls when the output slots are full.
@@ -137,7 +137,8 @@ Note: ExtendedAE for 1.20.1 (modid `expatternprovider`) does not ship `entro_cry
 | `baseSpeedMultiplier` | 4.0 | Global base speed multiplier (raises FE/t, total cost stays the same) |
 | `baseEnergyMultiplier` | 0.5 | Global base energy multiplier (0.5 = half cost) |
 | `maxUpgradeMultiplier` | 10 | Same option as Mekanism's `general.maxUpgradeMultiplier`: effect = value ^ (installed / possible) |
-| ~~`oneTickOutput`~~ | — | **Removed in 1.7.0**: machines always finish one batch per tick, and the same rule is applied to every Mekanism machine |
+| `oneTickOutput` | **true** | This machine only: finish one batch every tick, paying the whole operation FE inside that tick |
+| `globalOneTickOutput` | **false** | Every machine driven by Mekanism `CachedRecipe` (own machines, factories, addons) finishes one operation per tick while still consuming inputs and per-operation gas / fluid |
 
 Every key carries translation keys (`crystal_multiplier.configuration.machine.<key>` plus a matching `.tooltip`, section title
 `crystal_multiplier.configuration.machine`), so config screen mods such as **Configured** and **Forge Config Screens** show localised
@@ -187,7 +188,7 @@ progress arrow inside the machine (52,45,32,8) opens the matching recipe.
 
 ## Changelog
 
-- **1.7.0** — New machine front art (per-tier recolour, 1-4 tier pips, 7 frame glow animation); the `oneTickOutput` option is gone and the Crystal Multiplier always finishes one batch per tick; the new `CachedRecipeMixin` gives every Mekanism machine that runs on `CachedRecipe` (own machines, factories, addon machines) the same one-operation-per-tick behaviour while still draining recipe inputs and per-operation gas / fluid through `useResources`.
+- **1.7.0** — New machine front art with only a few extra pixels per tier (1-4 tier pips, the rest of the art is untouched); `oneTickOutput` is back and defaults to **true** for this machine, while the new `globalOneTickOutput` (default **false**) uses `CachedRecipeMixin` to give every Mekanism machine that runs on `CachedRecipe` one operation per tick, still draining inputs and per-operation gas / fluid through `useResources`; seed counts are divided down instead of requiring an exact multiple; addon crystal recipes (lattra, redstone) are now generated at reload time instead of using a `forge:conditional` json.
 - **1.6.1** — Fixed mixin injection: the `@Redirect` handlers now take the target `FriendlyByteBuf` as their first parameter, and the `ItemStack.of` `RETURN` injection is now `cancellable`, which fixes `Failed to load data for block entity` when large stacks are loaded from disk. The vanilla `Count` byte is written clamped to 64 while the real count lives in an extra int tag. Verified on a real Forge server: both mixins apply, output faces configured as item output can be extracted by pipes/hoppers, and a 200 item stack survives save -> restart -> load.
 - **1.6.0** — Added `ItemStack` / `FriendlyByteBuf` mixins so NBT and network packets keep counts above 127; seed and output slots now use real large stacks.
   Side configuration exposes item output and energy input only and item auto-ejection is enabled. Fixed the GUI title showing the raw `container.*` key / being drawn twice, and restored the player inventory label.
@@ -219,7 +220,7 @@ progress arrow inside the machine (52,45,32,8) opens the matching recipe.
 
 ## FAQ
 
-- **Nothing happens?** Check three things: seed count is a multiple of 16, output slots are not full, and the machine has power.
+- **Nothing happens?** Check three things: the seed stack holds at least 16 (one lane), the output slots are not full, and the machine has power.
 - **Can I multiply several crystal types at once?** No — one stack, one crystal type. Stack more of it to add lanes.
 - **Will addons that change output speed conflict?** No. Speed and yield are computed entirely inside this mod and never read modified values from other mods.
 - **Automatable?** Yes. Output slots can be extracted with hoppers or pipes; the seed slot accepts input and never loses its contents.
