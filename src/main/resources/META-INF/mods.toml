@@ -7,6 +7,7 @@ modId="crystal_multiplier"
 version="${mod_version}"
 displayName="水晶增殖机 / Crystal Multiplier"
 authors="woxin"
+logoFile="crystal_multiplier_logo.png"
 description='''
 A Mekanism-styled machine for non-recursive AE2 crystal multiplication.
 用于稳定自动化赛特斯、充能赛特斯、福鲁伊克斯等 AE2 系水晶的增殖机器（种子不消耗，纯 FE 驱动）。
