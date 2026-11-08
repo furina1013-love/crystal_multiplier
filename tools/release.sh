@@ -31,7 +31,22 @@ fi
 git -c user.name="crystal-multiplier" -c user.email="dev@example.com" tag -f -a "v$VER" -m "$VER" 2>/dev/null || git tag -f "v$VER"
 GIT_TOKEN=$(tr -d '\r\n' < "$TOKEN_FILE")
 URL="https://x-access-token:${GIT_TOKEN}@github.com/${REPO}.git"
-git push "$URL" "HEAD:main" "refs/tags/v$VER" 2>&1 | sed "s/${GIT_TOKEN}/***/g"
+# 这台机器的 github.com 出口不稳，push 要带重试；失败就明确退出，不留半成品
+PUSHED=0
+for attempt in 1 2 3 4 5; do
+  echo "  推送尝试 $attempt"
+  if OUT=$(git -c http.lowSpeedLimit=0 -c http.lowSpeedTime=0 push "$URL" "HEAD:main" "refs/tags/v$VER" 2>&1); then
+    echo "$OUT" | sed "s/${GIT_TOKEN}/***/g"
+    PUSHED=1
+    break
+  fi
+  echo "$OUT" | sed "s/${GIT_TOKEN}/***/g" | tail -3
+  sleep 5
+done
+if [ "$PUSHED" != "1" ]; then
+  echo "推送失败：源码 / tag 未上传，Release 未创建。网络恢复后重跑 tools/release.sh $VER"
+  exit 1
+fi
 
 echo "[5/5] 建 Release 并上传"
 python3 "$ROOT/tools/gh_release.py" "$VER"
