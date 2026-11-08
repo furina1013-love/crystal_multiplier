@@ -6,9 +6,9 @@ import net.minecraftforge.common.ForgeConfigSpec;
  * Common (server side) config of the Crystal Multiplier.
  * Everything the user asked to be tunable lives here: how many crystals form one
  * parallel lane, how big the seed slot is and how fast the machines run.
- * There are two "one operation per tick" switches: one for this machine (on by
- * default) and one that also applies the same rule to every Mekanism machine through
- * {@code CachedRecipeMixin} (off by default).
+ * There are two "eject every tick" switches: one for this machine (on by default) and
+ * one that applies the same rule to every Mekanism machine through {@code EjectorMixin}
+ * (off by default). Neither of them changes crafting speed.
  */
 public final class CrystalMultiplierConfig {
 
@@ -29,8 +29,8 @@ public final class CrystalMultiplierConfig {
     public static final ForgeConfigSpec.DoubleValue BASE_SPEED_MULTIPLIER;
     public static final ForgeConfigSpec.DoubleValue BASE_ENERGY_MULTIPLIER;
     public static final ForgeConfigSpec.IntValue MAX_UPGRADE_MULTIPLIER;
-    public static final ForgeConfigSpec.BooleanValue ONE_TICK_OUTPUT;
-    public static final ForgeConfigSpec.BooleanValue GLOBAL_ONE_TICK_OUTPUT;
+    public static final ForgeConfigSpec.BooleanValue EJECT_EVERY_TICK;
+    public static final ForgeConfigSpec.BooleanValue GLOBAL_EJECT_EVERY_TICK;
 
     static {
         ForgeConfigSpec.Builder builder = new ForgeConfigSpec.Builder();
@@ -91,20 +91,19 @@ public final class CrystalMultiplierConfig {
                 .translation(LANG_PREFIX + ".maxUpgradeMultiplier")
                 .defineInRange("maxUpgradeMultiplier", 10, 1, 1000);
 
-        ONE_TICK_OUTPUT = builder
-                .comment("Crystal Multiplier only: finish one output batch every tick instead of one batch",
-                        "per recipe duration. The whole operation's energy is still paid inside that tick,",
-                        "so the FE per crystal does not change. Default true.")
-                .translation(LANG_PREFIX + ".oneTickOutput")
-                .define("oneTickOutput", true);
+        EJECT_EVERY_TICK = builder
+                .comment("Crystal Multiplier only: push already produced items out of the output slots every",
+                        "tick, instead of Mekanism's default 10 tick ejection interval.",
+                        "Crafting speed is not touched by this option. Default true.")
+                .translation(LANG_PREFIX + ".ejectEveryTick")
+                .define("ejectEveryTick", true);
 
-        GLOBAL_ONE_TICK_OUTPUT = builder
-                .comment("Every Mekanism machine that runs on CachedRecipe (own machines, the factory family",
-                        "and addon machines) finishes one operation per tick, while still consuming its inputs",
-                        "and the per operation gas / fluid. This is a big hammer for the whole pack.",
-                        "Default false.")
-                .translation(LANG_PREFIX + ".globalOneTickOutput")
-                .define("globalOneTickOutput", false);
+        GLOBAL_EJECT_EVERY_TICK = builder
+                .comment("The same per tick ejection for every Mekanism machine (own machines, the factory",
+                        "family and addon machines), instead of the default 10 tick interval.",
+                        "Crafting speed is not touched by this option. Default false.")
+                .translation(LANG_PREFIX + ".globalEjectEveryTick")
+                .define("globalEjectEveryTick", false);
 
         builder.pop();
         SPEC = builder.build();
@@ -165,13 +164,13 @@ public final class CrystalMultiplierConfig {
         return intOr(MAX_UPGRADE_MULTIPLIER, 10);
     }
 
-    /** Crystal Multiplier only switch, on by default. */
-    public static boolean oneTickOutput() {
-        return boolOr(ONE_TICK_OUTPUT, true);
+    /** Push the finished products out of the output slots every tick, our machine only. On by default. */
+    public static boolean ejectEveryTick() {
+        return boolOr(EJECT_EVERY_TICK, true);
     }
 
-    /** Global switch that also speeds up every Mekanism machine, off by default. */
-    public static boolean globalOneTickOutput() {
-        return boolOr(GLOBAL_ONE_TICK_OUTPUT, false);
+    /** The same per tick ejection for every Mekanism machine. Off by default. */
+    public static boolean globalEjectEveryTick() {
+        return boolOr(GLOBAL_EJECT_EVERY_TICK, false);
     }
 }

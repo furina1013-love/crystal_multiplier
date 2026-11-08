@@ -246,11 +246,6 @@ public class CrystalMultiplierBlockEntity extends TileEntityMekanism implements 
         if (this.configComponent == null) {
             this.setupComponents();
         }
-        // TileEntityMekanism only ticks the frequency and upgrade components. The ejector has to be
-        // ticked explicitly, exactly like TileEntityConfigurableMachine does for Mekanism machines.
-        if (this.ejectorComponent != null) {
-            this.ejectorComponent.tickServer();
-        }
 
         CrystalMultiplicationRecipe recipe = this.findRecipe();
         ItemStack seed = this.seedSlot.getStack();
@@ -280,16 +275,11 @@ public class CrystalMultiplierBlockEntity extends TileEntityMekanism implements 
                         / (this.getTier().getSpeedMultiplier() * baseSpeed * speedFactor)));
                 int costPerTick = Math.max(1, (int) Math.round(recipe.getEnergyPerTick() * this.parallelism
                         * this.getTier().getSpeedMultiplier() * baseSpeed * baseEnergy * energyFactor));
-                if (CrystalMultiplierConfig.oneTickOutput()) {
-                    // One batch per tick (the default). The tuned recipe duration is not dropped: the
-                    // whole operation's energy is folded into that single tick, so a faster tier or
-                    // more speed cards still cost / pay exactly what they did before.
-                    this.ticksRequired = 1;
-                    this.energyPerTick = (int) Math.min(Integer.MAX_VALUE, (long) costPerTick * ticks);
-                } else {
-                    this.ticksRequired = ticks;
-                    this.energyPerTick = costPerTick;
-                }
+                // Crafting speed stays exactly as configured: the "per tick" feature of this mod is
+                // about pushing the finished products out of the output slots every tick, not about
+                // finishing the recipe faster.
+                this.ticksRequired = ticks;
+                this.energyPerTick = costPerTick;
 
                 int charge = (int) Math.min(this.energyPerTick, this.energyContainer.getEnergy().getValue());
                 if (charge > 0) {
@@ -320,6 +310,13 @@ public class CrystalMultiplierBlockEntity extends TileEntityMekanism implements 
         if (this.getActive() != working) {
             this.setActive(working);
             this.markForSave();
+        }
+        // TileEntityMekanism only ticks the frequency and upgrade components, so the ejector has to be
+        // ticked explicitly, exactly like TileEntityConfigurableMachine does for Mekanism machines.
+        // It runs last on purpose: pushResult above already put this tick's products into the output
+        // slots, so with the "eject every tick" option on they leave the machine in the same tick.
+        if (this.ejectorComponent != null) {
+            this.ejectorComponent.tickServer();
         }
     }
 

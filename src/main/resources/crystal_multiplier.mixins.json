@@ -6,6 +6,6 @@
   "mixins": [
     "ItemStackMixin",
     "FriendlyByteBufMixin",
-    "CachedRecipeMixin"
+    "EjectorMixin"
   ]
 }

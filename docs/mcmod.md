@@ -131,7 +131,8 @@ A = Mekanism 合金标签、C = Forge 电路标签、I = 锭标签、X = 钢机�
 | `baseSpeedMultiplier` | 4.0 | 全局基础速度倍率（提高会同步提高耗电/t，单次总电费不变） |
 | `baseEnergyMultiplier` | 0.5 | 全局基础耗电倍率（0.5 = 耗电减半） |
 | `maxUpgradeMultiplier` | 10 | 与 Mekanism 的 `general.maxUpgradeMultiplier` 同款：效果 = 该值^(已装/可装) |
-| `oneTickOutput` | false | 每 1 tick 完成一次输出（作弊级速度，默认关闭） |
+| `ejectEveryTick` | true | 产物槽每 tick 往相邻容器 / 管道弹一次（Mek 默认 10 tick 一次），不影响生产速度 |
+| `globalEjectEveryTick` | false | 所有 Mekanism 机器都每 tick 弹一次产物，不影响生产速度 |
 
 每个键都带翻译键（`crystal_multiplier.configuration.machine.<键名>` 与同名 `.tooltip`，段标题是 `crystal_multiplier.configuration.machine`），
 所以 **Configured**、**Forge Config Screens** 等界面模组会直接显示中文名称与说明；所有值都在运行时实时读取，改完立刻生效。
@@ -185,7 +186,7 @@ A = Mekanism 合金标签、C = Forge 电路标签、I = 锭标签、X = 钢机�
 
 ## 十一、更新记录
 
-- **1.7.0**：机器正面贴图换成新美术，原图不动、只在底边点 1/2/3/4 个档位点区分四档；`oneTickOutput` 加回并**默认开启**（只管本机器），另加 `globalOneTickOutput`（**默认关闭**）通过 `CachedRecipeMixin` 让所有以 Mekanism `CachedRecipe` 驱动的机器每 tick 完成一次操作，并在强制完成的路径上补调 `useResources`，气体 / 流体照常扣料；种子数改为整除计并行，不足一条并行的余数不再停机；附加水晶（lattra / redstone）配方改为运行时自动生成。
+- **1.7.0**：机器正面贴图换成新美术，原图不动、只在底边点 1/2/3/4 个档位点区分四档；新增两个「每 tick 出产物」开关：`ejectEveryTick`（本机，**默认开启**）与 `globalEjectEveryTick`（**默认关闭**，通过 `EjectorMixin` 把 Mek 弹射器内部 10 tick 的 `tickDelay` 清零），生产速度不受影响，弹射器改到产出之后 tick，成品同一 tick 即可离开；种子改整除计并行；附加水晶（lattra / redstone）配方改为运行时自动生成。
 - **1.6.1**：修复 `@Redirect` 回调缺少被调用对象参数导致的 Mixin 注入失败；`ItemStack.of` 的 `RETURN` 注入补上 `cancellable = true`，修复大堆叠读档报错；存档 `Count` 写成 ≤64 的安全值。已用真实服务端验证注入、侧面输出抽取与 200 堆叠存档往返。
 - **1.6.0**：新增 `ItemStack` / `FriendlyByteBuf` Mixin，存档与网络包都能保存超过 127 的物品数量，种子 / 输出槽直接使用真实大堆叠；
   侧面配置只保留物品输出与能量输入并启用自动输出；修复 GUI 顶部标题显示原始 `container.*` 键 / 重复绘制，恢复玩家背包标签；兼容 Mekanism 原版工厂安装器（保留机器内容升级）；方块贴图在 1.0.0 灰钢底上做可见的按档位换色与档位点。

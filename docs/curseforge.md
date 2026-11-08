@@ -137,8 +137,8 @@ Note: ExtendedAE for 1.20.1 (modid `expatternprovider`) does not ship `entro_cry
 | `baseSpeedMultiplier` | 4.0 | Global base speed multiplier (raises FE/t, total cost stays the same) |
 | `baseEnergyMultiplier` | 0.5 | Global base energy multiplier (0.5 = half cost) |
 | `maxUpgradeMultiplier` | 10 | Same option as Mekanism's `general.maxUpgradeMultiplier`: effect = value ^ (installed / possible) |
-| `oneTickOutput` | **true** | This machine only: finish one batch every tick, paying the whole operation FE inside that tick |
-| `globalOneTickOutput` | **false** | Every machine driven by Mekanism `CachedRecipe` (own machines, factories, addons) finishes one operation per tick while still consuming inputs and per-operation gas / fluid |
+| `ejectEveryTick` | **true** | This machine only: push the finished products out of the output slots every tick instead of Mekanism's 10 tick interval (crafting speed untouched) |
+| `globalEjectEveryTick` | **false** | The same per tick item ejection for every Mekanism machine (own machines, factories, addons); crafting speed untouched |
 
 Every key carries translation keys (`crystal_multiplier.configuration.machine.<key>` plus a matching `.tooltip`, section title
 `crystal_multiplier.configuration.machine`), so config screen mods such as **Configured** and **Forge Config Screens** show localised
@@ -188,7 +188,7 @@ progress arrow inside the machine (52,45,32,8) opens the matching recipe.
 
 ## Changelog
 
-- **1.7.0** — New machine front art with only a few extra pixels per tier (1-4 tier pips, the rest of the art is untouched); `oneTickOutput` is back and defaults to **true** for this machine, while the new `globalOneTickOutput` (default **false**) uses `CachedRecipeMixin` to give every Mekanism machine that runs on `CachedRecipe` one operation per tick, still draining inputs and per-operation gas / fluid through `useResources`; seed counts are divided down instead of requiring an exact multiple; addon crystal recipes (lattra, redstone) are now generated at reload time instead of using a `forge:conditional` json.
+- **1.7.0** — New machine front art that leaves the original art alone and only stamps 1-4 tier pips; two new "eject every tick" switches: `ejectEveryTick` (this machine, **on** by default) and `globalEjectEveryTick` (**off** by default, applied to every Mekanism machine through `EjectorMixin`, which zeroes Mekanism's private 10 tick `tickDelay`); crafting speed is untouched and the ejector now runs after the products are made so items can leave in the same tick; seed counts are divided down instead of requiring an exact multiple; addon crystal recipes (lattra, redstone) are generated at reload time.
 - **1.6.1** — Fixed mixin injection: the `@Redirect` handlers now take the target `FriendlyByteBuf` as their first parameter, and the `ItemStack.of` `RETURN` injection is now `cancellable`, which fixes `Failed to load data for block entity` when large stacks are loaded from disk. The vanilla `Count` byte is written clamped to 64 while the real count lives in an extra int tag. Verified on a real Forge server: both mixins apply, output faces configured as item output can be extracted by pipes/hoppers, and a 200 item stack survives save -> restart -> load.
 - **1.6.0** — Added `ItemStack` / `FriendlyByteBuf` mixins so NBT and network packets keep counts above 127; seed and output slots now use real large stacks.
   Side configuration exposes item output and energy input only and item auto-ejection is enabled. Fixed the GUI title showing the raw `container.*` key / being drawn twice, and restored the player inventory label.
