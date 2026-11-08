@@ -68,9 +68,9 @@ if '__error' in rel:
 print('release', rel['html_url'])
 
 base = rel['upload_url'].split('{')[0]
-assets = [(jar, 'application/java-archive'), ('SHA256SUMS.txt', 'text/plain'), ('cover.png', 'image/png')]
+assets = [(jar, 'application/java-archive'), ('SHA256SUMS.txt', 'text/plain'), ('cover.png', 'image/png'), ('LICENSE', 'text/plain')]
 for name, ctype in assets:
-    path = os.path.join(DIST, name)
+    path = os.path.join(ROOT, name) if name == 'LICENSE' else os.path.join(DIST, name)
     if not os.path.exists(path):
         print('跳过不存在的', name)
         continue
