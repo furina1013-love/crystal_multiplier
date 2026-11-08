@@ -188,6 +188,7 @@ progress arrow inside the machine (52,45,32,8) opens the matching recipe.
 
 ## Changelog
 
+- **1.7.1** — Relicensed from MIT to **GNU LGPL v3.0** (`LGPL-3.0-only`): `LICENSE` now carries the full LGPL-3.0 text, the `mods.toml` license field and the docs were updated. No functional change from 1.7.0.
 - **1.7.0** — New machine front art that leaves the original art alone and only stamps 1-4 tier pips; two new "eject every tick" switches: `ejectEveryTick` (this machine, **on** by default) and `globalEjectEveryTick` (**off** by default, applied to every Mekanism machine through `EjectorMixin`, which zeroes Mekanism's private 10 tick `tickDelay`); crafting speed is untouched and the ejector now runs after the products are made so items can leave in the same tick; seed counts are divided down instead of requiring an exact multiple; addon crystal recipes (lattra, redstone) are generated at reload time.
 - **1.6.1** — Fixed mixin injection: the `@Redirect` handlers now take the target `FriendlyByteBuf` as their first parameter, and the `ItemStack.of` `RETURN` injection is now `cancellable`, which fixes `Failed to load data for block entity` when large stacks are loaded from disk. The vanilla `Count` byte is written clamped to 64 while the real count lives in an extra int tag. Verified on a real Forge server: both mixins apply, output faces configured as item output can be extracted by pipes/hoppers, and a 200 item stack survives save -> restart -> load.
 - **1.6.0** — Added `ItemStack` / `FriendlyByteBuf` mixins so NBT and network packets keep counts above 127; seed and output slots now use real large stacks.
@@ -231,4 +232,4 @@ progress arrow inside the machine (52,45,32,8) opens the matching recipe.
 
 ## License
 
-MIT. Source, issues and changelog: https://github.com/furina1013-love/crystal_multiplier
+**GNU Lesser General Public License v3.0** (LGPL-3.0-only, see the bundled `LICENSE`). Source, issues and changelog: https://github.com/furina1013-love/crystal_multiplier

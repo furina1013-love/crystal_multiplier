@@ -186,6 +186,7 @@ A = Mekanism 合金标签、C = Forge 电路标签、I = 锭标签、X = 钢机�
 
 ## 十一、更新记录
 
+- **1.7.1**：许可证由 MIT 改为 **GNU LGPL v3.0**（LGPL-3.0-only），替换 `LICENSE` 全文并同步 `mods.toml`；功能与 1.7.0 一致。
 - **1.7.0**：机器正面贴图换成新美术，原图不动、只在底边点 1/2/3/4 个档位点区分四档；新增两个「每 tick 出产物」开关：`ejectEveryTick`（本机，**默认开启**）与 `globalEjectEveryTick`（**默认关闭**，通过 `EjectorMixin` 把 Mek 弹射器内部 10 tick 的 `tickDelay` 清零），生产速度不受影响，弹射器改到产出之后 tick，成品同一 tick 即可离开；种子改整除计并行；附加水晶（lattra / redstone）配方改为运行时自动生成。
 - **1.6.1**：修复 `@Redirect` 回调缺少被调用对象参数导致的 Mixin 注入失败；`ItemStack.of` 的 `RETURN` 注入补上 `cancellable = true`，修复大堆叠读档报错；存档 `Count` 写成 ≤64 的安全值。已用真实服务端验证注入、侧面输出抽取与 200 堆叠存档往返。
 - **1.6.0**：新增 `ItemStack` / `FriendlyByteBuf` Mixin，存档与网络包都能保存超过 127 的物品数量，种子 / 输出槽直接使用真实大堆叠；
@@ -216,4 +217,4 @@ A = Mekanism 合金标签、C = Forge 电路标签、I = 锭标签、X = 钢机�
 
 - 必需：Minecraft 1.20.1、Forge 47.x、Mekanism 10.4+、AE2 15+
 - 可选：AppliedFlux、ExtendedAE Plus（有则自动启用对应配方）、JEI（已提供「水晶增殖」分类）
-- 授权：MIT，源码与 Issue：https://github.com/furina1013-love/crystal_multiplier
+- 授权：**GNU LGPL v3.0**（LGPL-3.0-only），全文见仓库 `LICENSE`；源码与 Issue：https://github.com/furina1013-love/crystal_multiplier
