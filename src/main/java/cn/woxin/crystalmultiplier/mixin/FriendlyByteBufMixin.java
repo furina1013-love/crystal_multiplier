@@ -28,8 +28,8 @@ public class FriendlyByteBufMixin {
 
     @Redirect(method = "writeItemStack", remap = false,
             at = @At(value = "INVOKE", target = "Lnet/minecraft/network/FriendlyByteBuf;writeByte(I)Lio/netty/buffer/ByteBuf;"))
-    private ByteBuf crystal$writeCount(int count) {
-        return ((FriendlyByteBuf) (Object) this).writeVarInt(count);
+    private ByteBuf crystal$writeCount(FriendlyByteBuf buf, int count) {
+        return buf.writeVarInt(count);
     }
 
     @Inject(method = "m_130267_", at = @At("HEAD"), remap = false)
@@ -39,8 +39,8 @@ public class FriendlyByteBufMixin {
 
     @Redirect(method = "m_130267_", remap = false,
             at = @At(value = "INVOKE", target = "Lnet/minecraft/network/FriendlyByteBuf;readByte()B"))
-    private byte crystal$readCount() {
-        int count = ((FriendlyByteBuf) (Object) this).readVarInt();
+    private byte crystal$readCount(FriendlyByteBuf buf) {
+        int count = buf.readVarInt();
         this.crystal$pendingCount = count;
         // An empty stack is encoded as count 0 and has no item id/tag after it. Returning 1
         // unconditionally would make vanilla try to read those missing bytes and desync the packet,

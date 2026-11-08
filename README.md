@@ -153,7 +153,7 @@
 ```bash
 export JAVA_HOME=/path/to/jdk-17   # 需要 JDK 17
 ./gradlew build
-# 产物：build/libs/crystal_multiplier-1.6.0.jar
+# 产物：build/libs/crystal_multiplier-1.6.1.jar
 ```
 
 AE2 的物品只用注册名（`ae2:certus_quartz_crystal` 等）与标签访问，不需要 AE2 的类；Mekanism 只用到升级卡的公开接口
@@ -171,6 +171,8 @@ AE2 的物品只用注册名（`ae2:certus_quartz_crystal` 等）与标签访问
 
 ## 更新记录
 
+- **1.6.1**：修复 Mixin 注入问题。`@Redirect` 回调方法现在显式接收被调用对象（`FriendlyByteBuf`）作为第一个参数，这是 1.6.0 启动即报 `InvalidInjectionException` 的原因；`ItemStack.of` 的 `RETURN` 注入补上 `cancellable = true`，修复大堆叠物品读档时 `Failed to load data for block entity`（`The call m_41712_ is not cancellable`）。存档里同时把原版 `Count` 字节写成 ≤64 的安全值，只由额外的整数键保存真实数量，避免第三方读到负数字节。
+  已在真实 Forge 服务端验证：两个 Mixin 均正常注入；侧面配置为「物品输出」的面可以被管道/漏斗抽取，改回「无」后抽取立即停止；200 个物品的大堆叠在存档 → 重启 → 读档后完整保留。
 - **1.6.0**：新增 `ItemStack` / `FriendlyByteBuf` Mixin，存档与网络包都能保存超过 127 的物品数量，种子 / 输出槽直接使用真实大堆叠；
   侧面配置只保留物品输出与能量输入，并启用自动输出；修复 GUI 顶部标题显示原始 `container.*` 键 / 重复绘制，恢复玩家背包标签；兼容 Mekanism 原版工厂安装器（保留机器内容升级）；方块贴图在 1.0.0 灰钢底上做可见的按档位换色与档位点。
 - **1.5.0**：机器改为 **Mekanism 原生机器**：方块用 `BlockTile` + `BlockTileBuilder`，方块实体继承 `TileEntityMekanism`，

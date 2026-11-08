@@ -35,12 +35,15 @@ public class ItemStackMixin {
         int count = ((ItemStack) (Object) this).getCount();
         if (count > 127) {
             result.putInt(CRYSTAL_COUNT, count);
+            // Keep the vanilla byte sane for third party readers instead of storing a negative
+            // or zero truncated value.
+            result.putByte("Count", (byte) Math.min(count, ((ItemStack) (Object) this).getMaxStackSize()));
         } else {
             result.remove(CRYSTAL_COUNT);
         }
     }
 
-    @Inject(method = "m_41712_", at = @At("RETURN"), remap = false)
+    @Inject(method = "m_41712_", at = @At("RETURN"), cancellable = true, remap = false)
     private static void crystal$loadLargeCount(CompoundTag tag, CallbackInfoReturnable<ItemStack> cir) {
         int count = tag.getInt(CRYSTAL_COUNT);
         if (count <= 127) {

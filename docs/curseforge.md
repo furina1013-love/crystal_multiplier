@@ -187,6 +187,7 @@ progress arrow inside the machine (52,45,32,8) opens the matching recipe.
 
 ## Changelog
 
+- **1.6.1** — Fixed mixin injection: the `@Redirect` handlers now take the target `FriendlyByteBuf` as their first parameter, and the `ItemStack.of` `RETURN` injection is now `cancellable`, which fixes `Failed to load data for block entity` when large stacks are loaded from disk. The vanilla `Count` byte is written clamped to 64 while the real count lives in an extra int tag. Verified on a real Forge server: both mixins apply, output faces configured as item output can be extracted by pipes/hoppers, and a 200 item stack survives save -> restart -> load.
 - **1.6.0** — Added `ItemStack` / `FriendlyByteBuf` mixins so NBT and network packets keep counts above 127; seed and output slots now use real large stacks.
   Side configuration exposes item output and energy input only and item auto-ejection is enabled. Fixed the GUI title showing the raw `container.*` key / being drawn twice, and restored the player inventory label.
   Compatible with Mekanism's own Tier Installer items, which upgrade a machine in place while keeping its contents. Block textures keep the 1.0.0 grey-steel base with visible per-tier recolouring and tier pips.
