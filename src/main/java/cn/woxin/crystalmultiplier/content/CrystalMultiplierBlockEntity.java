@@ -278,13 +278,11 @@ public class CrystalMultiplierBlockEntity extends TileEntityMekanism implements 
                         / (this.getTier().getSpeedMultiplier() * baseSpeed * speedFactor)));
                 int costPerTick = Math.max(1, (int) Math.round(recipe.getEnergyPerTick() * this.parallelism
                         * this.getTier().getSpeedMultiplier() * baseSpeed * baseEnergy * energyFactor));
-                if (CrystalMultiplierConfig.oneTickOutput()) {
-                    this.ticksRequired = 1;
-                    this.energyPerTick = (int) Math.min(Integer.MAX_VALUE, (long) costPerTick * ticks);
-                } else {
-                    this.ticksRequired = ticks;
-                    this.energyPerTick = costPerTick;
-                }
+                // The machine always finishes one batch per tick. The tuned recipe duration is not
+                // dropped: the whole operation's energy is folded into that single tick, so a faster
+                // tier or more speed cards still cost / pay exactly what they did before.
+                this.ticksRequired = 1;
+                this.energyPerTick = (int) Math.min(Integer.MAX_VALUE, (long) costPerTick * ticks);
 
                 int charge = (int) Math.min(this.energyPerTick, this.energyContainer.getEnergy().getValue());
                 if (charge > 0) {

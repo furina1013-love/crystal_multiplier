@@ -57,7 +57,11 @@
 | `baseSpeedMultiplier` | 4.0 | 全局基础速度倍率（越高越快，耗能同比上升） |
 | `baseEnergyMultiplier` | **0.5** | 全局基础能耗倍率（0.5 = 所有操作耗能减半） |
 | `maxUpgradeMultiplier` | **10** | 与 Mekanism 自己的 `general.maxUpgradeMultiplier` 完全同款：升级效果 = 该值 ^ (已装卡数 / 可装卡数)，10 就是 Mek 官方默认值 |
-| `oneTickOutput` | **false** | 全局开关：每 1 tick 完成一次输出（单次操作的总 FE 在该 tick 内一次扣完） |
+| ~~`oneTickOutput`~~ | — | **1.7.0 起已删除**：机器恒定每 tick 完成一批，单次操作的总 FE 在该 tick 内一次扣完（不再可关） |
+
+「每 tick 一批」现在是无条件行为：水晶增殖机每 tick 产出一批；同一条规则还通过 `CachedRecipeMixin` 施加给
+**所有 Mekanism 机器**（本体机器、工厂，以及复用 `CachedRecipe` 的附属机械），它们同样每 tick 完成一次操作，
+并且照常消耗配方输入与每操作的气体 / 流体。
 
 每个键都带翻译键（`crystal_multiplier.configuration.machine.<键名>` 与同名 `.tooltip`），段标题是
 `crystal_multiplier.configuration.machine`，所以 **Configured（MrCrayfish）** 与 **Forge Config Screens** 这类界面模组
@@ -153,7 +157,7 @@
 ```bash
 export JAVA_HOME=/path/to/jdk-17   # 需要 JDK 17
 ./gradlew build
-# 产物：build/libs/crystal_multiplier-1.6.1.jar
+# 产物：build/libs/crystal_multiplier-1.7.0.jar
 ```
 
 AE2 的物品只用注册名（`ae2:certus_quartz_crystal` 等）与标签访问，不需要 AE2 的类；Mekanism 只用到升级卡的公开接口
@@ -166,11 +170,15 @@ AE2 的物品只用注册名（`ae2:certus_quartz_crystal` 等）与标签访问
 
 - `mods.toml`：forge [47,)、minecraft [1.20.1,1.21)、ae2 [15,)、mekanism [10.4,) 为必需；expatternprovider（ExtendedAE 1.20.1 的真实 modid）、appflux、extendedae_plus、jei 为可选软依赖。
 - JEI 为可选：装了就注册「水晶增殖」分类与催化剂，不装则完全不加载相关类（`compileOnly` 依赖，不进入服务端）。
-- 方块模型复用 Mekanism 的 `mekanism:block/machine` 父模型（保证与 Mekanism 机器同款外形）。贴图以 1.0.0 的 Mek 灰钢底为基础，四档做了可见的按档位换色：边框与正面水晶区、左下角档位点分别为基础=钢灰蓝、高级=翠绿、精英=紫、终极=赤红；正面水晶在运行时按 active 状态切换发光贴图。
+- 方块模型复用 Mekanism 的 `mekanism:block/machine` 父模型（保证与 Mekanism 机器同款外形）。贴图以 1.7.0 的新美术为基础（`新贴图基础/front.png` 与 7 帧 `front_active.png`），四档按档位换色（基础=钢灰蓝、高级=翠绿、精英=紫、终极=赤红），底边画上 1 / 2 / 3 / 4 个档位点；`*_front_active.png` 带 `.mcmeta`，运行时按 7 帧发光脉冲播放。
 - 1.6.0 修改了物品数量的网络编码（VarInt），**客户端与服务端都必须安装 1.6.0+**，不能与旧版本混用；与其它修改物品数量上限的模组同时使用时请自行验证。
 
 ## 更新记录
 
+- **1.7.0**：机器正面贴图换成新美术（四档换色 + 档位点 + 7 帧发光脉冲）；删除 `oneTickOutput` 配置项，水晶增殖机恒定每 tick 产出一批；
+  新增 `CachedRecipeMixin`，把「每 tick 完成一次操作」施加到所有以 Mekanism `CachedRecipe` 驱动的机器（本体机器、工厂与附属机械），
+  并在这条强制完成的路径上补调 `useResources`，保证气体 / 流体配方照常扣料。服务端实测：粉碎机 6 个圆石 1 秒内出 6 个砂砾；
+  净化仓 3 个粗铁 1 秒内出 6 个铁碎并照常消耗氧气；水晶机稳定 2 个 / tick。
 - **1.6.1**：修复 Mixin 注入问题。`@Redirect` 回调方法现在显式接收被调用对象（`FriendlyByteBuf`）作为第一个参数，这是 1.6.0 启动即报 `InvalidInjectionException` 的原因；`ItemStack.of` 的 `RETURN` 注入补上 `cancellable = true`，修复大堆叠物品读档时 `Failed to load data for block entity`（`The call m_41712_ is not cancellable`）。存档里同时把原版 `Count` 字节写成 ≤64 的安全值，只由额外的整数键保存真实数量，避免第三方读到负数字节。
   已在真实 Forge 服务端验证：两个 Mixin 均正常注入；侧面配置为「物品输出」的面可以被管道/漏斗抽取，改回「无」后抽取立即停止；200 个物品的大堆叠在存档 → 重启 → 读档后完整保留。
 - **1.6.0**：新增 `ItemStack` / `FriendlyByteBuf` Mixin，存档与网络包都能保存超过 127 的物品数量，种子 / 输出槽直接使用真实大堆叠；

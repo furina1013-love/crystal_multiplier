@@ -15,8 +15,6 @@
   "crystal_multiplier.configuration.machine.maxParallel.tooltip": "单台机器可运行的并行线上限。",
   "crystal_multiplier.configuration.machine.maxUpgradeMultiplier": "升级倍率基数",
   "crystal_multiplier.configuration.machine.maxUpgradeMultiplier.tooltip": "Mekanism 升级算法的底数：倍率 ^ (已装卡数 / 可装卡数)，默认 10 与 Mekanism 一致。",
-  "crystal_multiplier.configuration.machine.oneTickOutput": "每 tick 产出一批（全局开关）",
-  "crystal_multiplier.configuration.machine.oneTickOutput.tooltip": "开启后每 tick 都会产出一批成品。",
   "crystal_multiplier.configuration.machine.seedCapacityPerUpgrade": "每张升级卡增加的种子槽容量",
   "crystal_multiplier.configuration.machine.seedCapacityPerUpgrade.tooltip": "每张插入的升级卡额外增加的种子槽容量。",
   "crystal_multiplier.configuration.machine.seedSlotCapCeiling": "种子槽容量上限",

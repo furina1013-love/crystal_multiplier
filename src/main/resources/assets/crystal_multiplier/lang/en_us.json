@@ -15,8 +15,6 @@
   "crystal_multiplier.configuration.machine.maxParallel.tooltip": "Upper bound of parallel lanes per machine.",
   "crystal_multiplier.configuration.machine.maxUpgradeMultiplier": "Upgrade multiplier",
   "crystal_multiplier.configuration.machine.maxUpgradeMultiplier.tooltip": "Base factor of the Mekanism upgrade maths: value ^ (cards / cards possible). Default 10 = Mekanism default.",
-  "crystal_multiplier.configuration.machine.oneTickOutput": "One output per tick",
-  "crystal_multiplier.configuration.machine.oneTickOutput.tooltip": "When enabled one finished batch leaves the machine every tick.",
   "crystal_multiplier.configuration.machine.seedCapacityPerUpgrade": "Seed slot bonus per upgrade card",
   "crystal_multiplier.configuration.machine.seedCapacityPerUpgrade.tooltip": "Extra seed slot capacity per inserted upgrade card.",
   "crystal_multiplier.configuration.machine.seedSlotCapCeiling": "Maximum seed slot capacity",
