@@ -19,8 +19,6 @@
   "crystal_multiplier.configuration.machine.ejectEveryTick.tooltip": "When enabled the Crystal Multiplier pushes its output slots into adjacent containers / pipes every tick instead of Mekanism's default 10 tick interval. Crafting speed is not affected. On by default.",
   "crystal_multiplier.configuration.machine.globalEjectEveryTick": "Global: every Mekanism machine ejects products every tick",
   "crystal_multiplier.configuration.machine.globalEjectEveryTick.tooltip": "When enabled every Mekanism machine (own machines, factories, addon machines) pushes its output slots every tick instead of the default 10 tick interval. Crafting speed is not affected. Off by default.",
-  "crystal_multiplier.configuration.machine.seedCapacityPerUpgrade": "Seed slot bonus per upgrade card",
-  "crystal_multiplier.configuration.machine.seedCapacityPerUpgrade.tooltip": "Extra seed slot capacity per inserted upgrade card.",
   "crystal_multiplier.configuration.machine.seedSlotCapCeiling": "Maximum seed slot capacity",
   "crystal_multiplier.configuration.machine.seedSlotCapCeiling.tooltip": "Hard upper bound of the seed slot capacity.",
   "crystal_multiplier.configuration.machine.tooltip": "Parallelism, seed slot, speed and energy settings of the Crystal Multiplier.",

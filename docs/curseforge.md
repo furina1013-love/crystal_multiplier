@@ -41,36 +41,34 @@ Because the item-count network encoding changed, **both client and server must r
 ## Parallelism: the seed stack size IS your throughput
 
 1. Put one crystal type in the seed slot. Every 16 crystals (configurable) form one parallel lane; the count is divided down (`20` = one lane plus 4 leftovers) and the machine keeps running.
-2. **Parallel lanes = seed count / 16** — 16 crystals = 1 lane, 32 = 2 lanes, 64 = 4 lanes.
-3. Output *and* energy draw scale with the lane count, so the **FE cost per crystal stays the same** — more seeds simply means more production lines.
+2. **Base parallel lanes = seed count / 16** — 16 crystals = 1 lane, 32 = 2 lanes, 64 = 4 lanes; speed cards multiply this number and `maxParallel` caps it.
+3. Output *and* energy draw scale with the lane count, so the **FE cost per crystal stays the same** — more seeds (or more speed cards) simply means more production lines.
 4. Seeds are **never consumed**. The machine only stalls when the output slots are full.
-5. Seed slot capacity comes from the tier (64 / 128 / 256 / 512) and gains **+16 per inserted speed or energy card** (global ceiling `seedSlotCapCeiling`, 1024 by default).
-6. Seed and output stacks may exceed 127, so a fully loaded Ultimate machine holds 512 seeds = **32 parallel lanes**.
+5. Seed slot capacity comes **only** from the tier (64 / 128 / 256 / 512) — upgrade cards never enlarge it (global ceiling `seedSlotCapCeiling`, 1024 by default).
+6. Seed and output stacks may exceed 127, so a fully loaded Ultimate machine holds 512 seeds = **32 parallel lanes**, and 8 speed cards can push that up to the `maxParallel` cap of 64 lanes.
 7. Large stacks are stored directly by the mixin: shift-click whole stacks, hoppers or pipes can fill a slot completely; extraction follows the item's own stack limit.
 
 ---
 
 ## Upgrade cards
 
-The upgrade window is Mekanism's own (not a hand-drawn slot). This machine only supports two card types, up to **8 of each**:
+The upgrade window is Mekanism's own (not a hand-drawn slot). This machine only supports two card types, up to **8 of each**.
+Both use Mekanism's curve (`maxUpgradeMultiplier`, default 10, so `fraction = installed / 8` and effect = multiplier ^ fraction),
+but on this machine neither of them changes the speed:
 
 | Card | Effect |
 | --- | --- |
-| `mekanism:upgrade_speed` | **Overclock.** 8 cards cut the batch time to 1/10 but raise the draw per tick to 100x, so the FE cost per crystal goes up (about 1.33x with one card, 10x with eight). |
-| `mekanism:upgrade_energy` | **Cheaper processing.** 8 cards cut the draw per tick to 1/10 and **never touch the energy buffer** (the buffer is tier-only). 8 speed + 8 energy lands exactly back at the base cost. |
-| Speed / energy card | Every card also adds **+16 seed slot capacity**, i.e. more crystals and more lanes. |
+| `mekanism:upgrade_speed` | **Adds parallel lanes.** `lanes = clamp(floor(seeds / crystalsPerParallel) x multiplier ^ (cards / 8), 0, maxParallel)` — one card is about x1.33 lanes, four are x3.16 and eight give x10. The **batch time is never shortened**. |
+| `mekanism:upgrade_energy` | **Cheaper processing only.** Draw per tick x multiplier ^ (-cards / 8), so 8 cards = 1/10; the **energy buffer is never touched** (the buffer is tier-only). |
+| Both cards | **No seed slot capacity is added any more** — seed capacity is tier-only (64 / 128 / 256 / 512). |
 | Others (muffling, gas, filter, anchor) | **Refused** by the upgrade window. |
 
-The maths is Mekanism's own (the `MekanismUtils#getTicks` / `#getEnergyPerTick` formulas from Mekanism 10), with Mekanism's
-`maxUpgradeMultiplier` config value (default 10) as the base - this mod exposes the same key under the same name:
+- Batch time = recipe ticks / (tier speed multiplier x `baseSpeedMultiplier`) — tier and global config only, cards are irrelevant.
+- FE per tick = recipe FE/t x lanes x tier speed multiplier x `baseSpeedMultiplier` x `baseEnergyMultiplier` x multiplier ^ (-energy cards / 8).
 
-- `fraction = installed cards / Upgrade#getMax()` (8 for both speed and energy)
-- batch time = base time x multiplier ^ (-fraction_speed)
-- FE per tick = base FE x multiplier ^ (2 * fraction_speed - fraction_energy)
-
-In short: speed cards are an *overclock* (8 cards = 10x faster but 100x the draw per tick, exactly like a Mekanism machine),
-energy cards make the job *cheaper* (8 cards = a tenth of the draw), and every card lets you *stack more seeds*.
-The extra draw of overclocked machines is handled by proportional throttling: when one tick costs more than the internal
+In short: speed cards buy you **more lanes** (more items per batch and a proportionally higher draw, at exactly the same batch time),
+energy cards make the job **cheaper**, and neither of them makes the machine faster or the seed slot bigger.
+The larger draw of heavily parallel machines is handled by proportional throttling: when one tick costs more than the internal
 buffer holds, the machine simply runs proportionally slower instead of stalling.
 
 ---
@@ -131,7 +129,6 @@ Note: ExtendedAE for 1.20.1 (modid `expatternprovider`) does not ship `entro_cry
 | Key | Default | Meaning |
 | --- | --- | --- |
 | `crystalsPerParallel` | 16 | Crystals required per parallel lane |
-| `seedCapacityPerUpgrade` | 16 | Capacity added per speed / energy card (base capacity is tier-driven) |
 | `seedSlotCapCeiling` | 1024 | Ceiling for seed slot capacity (was `maxSeedCapacity` in 1.1.0) |
 | `maxParallel` | 64 | Parallel lane cap per machine |
 | `baseSpeedMultiplier` | 4.0 | Global base speed multiplier (raises FE/t, total cost stays the same) |
@@ -148,19 +145,23 @@ names and descriptions, and all values are re-read at runtime so a change applie
 
 ## Example numbers (Basic tier, 64 Certus seeds = 4 lanes)
 
-| Upgrades | Items per batch | Batch time | Draw | FE per crystal |
-| --- | --- | --- | --- | --- |
-| none | 8 | 2.5 s (50 ticks) | 1,600 FE/t | 10,000 |
-| 2x speed | 8 | 1.4 s (28 ticks) | 5,060 FE/t | ~17,700 |
-| 8x speed (max) | 8 | 0.25 s (5 ticks) | 160,000 FE/t | 100,000 |
-| 2x energy | 8 | 2.5 s (50 ticks) | 900 FE/t | 5,625 |
-| 8x energy (max) | 8 | 2.5 s (50 ticks) | 160 FE/t | 1,000 |
-| 8 speed + 8 energy | 8 | 0.25 s (5 ticks) | 16,000 FE/t | 10,000 |
+| Upgrades | Lanes | Items per batch | Batch time | Draw | FE per crystal |
+| --- | --- | --- | --- | --- | --- |
+| none | 4 | 8 | 2.5 s (50 ticks) | 1,600 FE/t | 10,000 |
+| 1x speed | 5 | 10 | 2.5 s (50 ticks) | 2,000 FE/t | 10,000 |
+| 4x speed | 13 | 26 | 2.5 s (50 ticks) | 5,200 FE/t | 10,000 |
+| 8x speed (max) | 40 | 80 | 2.5 s (50 ticks) | 16,000 FE/t | 10,000 |
+| 2x energy | 4 | 8 | 2.5 s (50 ticks) | 900 FE/t | 5,625 |
+| 8x energy (max) | 4 | 8 | 2.5 s (50 ticks) | 160 FE/t | 1,000 |
+| 8 speed + 8 energy | 40 | 80 | 2.5 s (50 ticks) | 1,600 FE/t | 1,000 |
 
-Ultimate tier with the same 64 seeds: 8 items every 0.3 s (6 ticks) at 12,800 FE/t, 9,600 FE per crystal;
-adding 8 speed cards makes it one batch per tick at 1,280,000 FE/t (160,000 FE per crystal - pure overclock).
+Speed cards add lanes instead of shortening the batch: items per batch and the draw per tick rise together while the batch time stays put.
 
-Ultimate tier fully loaded with 512 seeds = 32 lanes: 64 items every 0.3 s at 102,400 FE/t (by these formulas).
+Ultimate tier with the same 64 seeds: 4 lanes, 8 items every 0.3 s (6 ticks) at 12,800 FE/t, 9,600 FE per crystal;
+adding 8 speed cards gives 40 lanes (80 items per 6 ticks at 128,000 FE/t).
+
+Ultimate tier fully loaded with 512 seeds = 32 lanes: 64 items every 0.3 s at 102,400 FE/t. Adding 8 speed cards asks for
+320 lanes, which `maxParallel` clamps to 64 — 128 items per 6 ticks at 204,800 FE/t.
 
 ---
 
@@ -188,6 +189,7 @@ progress arrow inside the machine (52,45,32,8) opens the matching recipe.
 
 ## Changelog
 
+- **1.7.1** — Upgrade semantics changed: speed cards now add parallel lanes and energy cards only cut the draw; neither card enlarges the seed slot any more, and the `seedCapacityPerUpgrade` config key was removed.
 - **1.7.0** — New machine front art that leaves the original art alone and only stamps 1-4 tier pips; two new "eject every tick" switches: `ejectEveryTick` (this machine, **on** by default) and `globalEjectEveryTick` (**off** by default, applied to every Mekanism machine through `EjectorMixin`, which zeroes Mekanism's private 10 tick `tickDelay`); crafting speed is untouched and the ejector now runs after the products are made so items can leave in the same tick; seed counts are divided down instead of requiring an exact multiple; addon crystal recipes (lattra, redstone) are generated at reload time.
 - **1.6.1** — Fixed mixin injection: the `@Redirect` handlers now take the target `FriendlyByteBuf` as their first parameter, and the `ItemStack.of` `RETURN` injection is now `cancellable`, which fixes `Failed to load data for block entity` when large stacks are loaded from disk. The vanilla `Count` byte is written clamped to 64 while the real count lives in an extra int tag. Verified on a real Forge server: both mixins apply, output faces configured as item output can be extracted by pipes/hoppers, and a 200 item stack survives save -> restart -> load.
 - **1.6.0** — Added `ItemStack` / `FriendlyByteBuf` mixins so NBT and network packets keep counts above 127; seed and output slots now use real large stacks.
@@ -224,7 +226,7 @@ progress arrow inside the machine (52,45,32,8) opens the matching recipe.
 - **Can I multiply several crystal types at once?** No — one stack, one crystal type. Stack more of it to add lanes.
 - **Will addons that change output speed conflict?** No. Speed and yield are computed entirely inside this mod and never read modified values from other mods.
 - **Automatable?** Yes. Output slots can be extracted with hoppers or pipes; the seed slot accepts input and never loses its contents.
-- **How do upgrade cards stack?** With Mekanism's own curve: effect = `maxUpgradeMultiplier` ^ (installed / 8). With the default 10, 8 speed cards give 10x speed at 100x the draw per tick, 8 energy cards give 1/10 the draw, and 8 + 8 lands back at the base cost.
+- **How do upgrade cards stack?** With Mekanism's own curve: effect = `maxUpgradeMultiplier` ^ (installed / 8). With the default 10, 8 speed cards give 10x the parallel lanes (batch time unchanged, draw per tick scales with the lanes) and 8 energy cards give 1/10 the draw.
 - **Why can a slot hold more than 127 items?** The bundled `ItemStack` / `FriendlyByteBuf` mixins store the real count in NBT and send it as a VarInt, so large stacks survive saves and container sync. The slot corner and tooltip show the real total.
 
 ---

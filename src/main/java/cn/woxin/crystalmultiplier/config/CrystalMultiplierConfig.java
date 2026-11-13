@@ -23,7 +23,6 @@ public final class CrystalMultiplierConfig {
     public static final ForgeConfigSpec SPEC;
 
     public static final ForgeConfigSpec.IntValue CRYSTALS_PER_PARALLEL;
-    public static final ForgeConfigSpec.IntValue SEED_CAPACITY_PER_UPGRADE;
     public static final ForgeConfigSpec.IntValue SEED_SLOT_CAP_CEILING;
     public static final ForgeConfigSpec.IntValue MAX_PARALLEL;
     public static final ForgeConfigSpec.DoubleValue BASE_SPEED_MULTIPLIER;
@@ -45,12 +44,6 @@ public final class CrystalMultiplierConfig {
                         "A single recipe may override it with its own \"crystals_per_parallel\" field.")
                 .translation(LANG_PREFIX + ".crystalsPerParallel")
                 .defineInRange("crystalsPerParallel", 16, 1, 64);
-
-        SEED_CAPACITY_PER_UPGRADE = builder
-                .comment("Extra seed slot capacity granted by every speed or energy upgrade card inserted",
-                        "into an upgrade slot. The tier already sets the base capacity of the single seed slot.")
-                .translation(LANG_PREFIX + ".seedCapacityPerUpgrade")
-                .defineInRange("seedCapacityPerUpgrade", 16, 0, 32);
 
         SEED_SLOT_CAP_CEILING = builder
                 .comment("Hard upper bound of the seed slot capacity.",
@@ -138,10 +131,6 @@ public final class CrystalMultiplierConfig {
 
     public static int crystalsPerParallel() {
         return intOr(CRYSTALS_PER_PARALLEL, 16);
-    }
-
-    public static int seedCapacityPerUpgrade() {
-        return intOr(SEED_CAPACITY_PER_UPGRADE, 16);
     }
 
     public static int seedSlotCapCeiling() {

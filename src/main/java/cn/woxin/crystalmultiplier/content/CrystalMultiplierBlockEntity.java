@@ -194,10 +194,9 @@ public class CrystalMultiplierBlockEntity extends TileEntityMekanism implements 
         return upgradeComponent == null ? 0 : upgradeComponent.getUpgrades(type);
     }
 
-    /** Seed slot capacity: the tier base plus one bonus per installed speed/energy upgrade card. */
+    /** Seed slot capacity: the tier base only, upgrade cards deliberately do not enlarge it. */
     public int getSeedCapacity() {
-        int installed = this.getUpgradeCount(Upgrade.SPEED) + this.getUpgradeCount(Upgrade.ENERGY);
-        int capacity = this.getTier().getSeedStackLimit() + CrystalMultiplierConfig.seedCapacityPerUpgrade() * installed;
+        int capacity = this.getTier().getSeedStackLimit();
         return Math.max(1, Math.min(CrystalMultiplierConfig.seedSlotCapCeiling(), capacity));
     }
 
@@ -254,7 +253,15 @@ public class CrystalMultiplierBlockEntity extends TileEntityMekanism implements 
         // Any seed count at or above one lane is enough: the lanes are the integer division, the
         // leftovers simply do not form an extra lane (16 / 16 / 16 + 5 leftover = 3 lanes, still runs).
         this.seedValid = !seed.isEmpty() && seedCount >= perParallel;
-        this.parallelism = this.seedValid ? Math.min(CrystalMultiplierConfig.maxParallel(), seedCount / perParallel) : 0;
+        // Speed cards no longer speed the machine up: every card multiplies the number of parallel
+        // lanes instead (base ^ cards/max, base = maxUpgradeMultiplier, so 8 cards = 10x lanes).
+        double upgradeMultiplier = Math.max(1.0D, CrystalMultiplierConfig.maxUpgradeMultiplier());
+        double fractionSpeed = (double) this.getUpgradeCount(Upgrade.SPEED) / (double) Upgrade.SPEED.getMax();
+        double fractionEnergy = (double) this.getUpgradeCount(Upgrade.ENERGY) / (double) Upgrade.ENERGY.getMax();
+        double parallelFactor = Math.min(4096.0D, Math.pow(upgradeMultiplier, fractionSpeed));
+        int lanes = this.seedValid ? seedCount / perParallel : 0;
+        this.parallelism = lanes <= 0 ? 0
+                : (int) Math.min((long) CrystalMultiplierConfig.maxParallel(), Math.round(lanes * parallelFactor));
 
         boolean working = false;
         if (recipe != null && this.parallelism > 0 && MekanismUtils.canFunction(this)) {
@@ -262,17 +269,15 @@ public class CrystalMultiplierBlockEntity extends TileEntityMekanism implements 
             int amount = Math.max(1, result.getCount() * this.parallelism);
             this.itemsPerBatch = amount;
             if (this.canAccept(result, amount)) {
-                double upgradeMultiplier = Math.max(1.0D, CrystalMultiplierConfig.maxUpgradeMultiplier());
-                double fractionSpeed = (double) this.getUpgradeCount(Upgrade.SPEED) / (double) Upgrade.SPEED.getMax();
-                double fractionEnergy = (double) this.getUpgradeCount(Upgrade.ENERGY) / (double) Upgrade.ENERGY.getMax();
-                double speedFactor = Math.min(4096.0D, Math.pow(upgradeMultiplier, fractionSpeed));
-                double energyFactor = Math.min(1_048_576.0D,
-                        Math.pow(upgradeMultiplier, 2.0D * fractionSpeed - fractionEnergy));
+                // Energy cards only cut the FE per tick (base ^ -cards/max, 8 cards = 1/10). They do
+                // not touch the energy buffer (that is tier only) nor the seed slot.
+                double energyFactor = Math.min(1_048_576.0D, Math.pow(upgradeMultiplier, -fractionEnergy));
                 double baseSpeed = Math.max(0.01D, CrystalMultiplierConfig.baseSpeedMultiplier());
                 double baseEnergy = Math.max(0.0001D, CrystalMultiplierConfig.baseEnergyMultiplier());
 
+                // Batch time depends on the tier and the global base speed only, never on cards.
                 int ticks = Math.max(1, (int) Math.round(recipe.getTicks()
-                        / (this.getTier().getSpeedMultiplier() * baseSpeed * speedFactor)));
+                        / (this.getTier().getSpeedMultiplier() * baseSpeed)));
                 int costPerTick = Math.max(1, (int) Math.round(recipe.getEnergyPerTick() * this.parallelism
                         * this.getTier().getSpeedMultiplier() * baseSpeed * baseEnergy * energyFactor));
                 // Crafting speed stays exactly as configured: the "per tick" feature of this mod is
