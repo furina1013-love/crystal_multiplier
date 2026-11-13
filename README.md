@@ -59,6 +59,7 @@
 | `baseSpeedMultiplier` | 4.0 | 全局基础速度倍率（越高越快，耗能同比上升） |
 | `baseEnergyMultiplier` | **0.5** | 全局基础能耗倍率（0.5 = 所有操作耗能减半） |
 | `maxUpgradeMultiplier` | **10** | 与 Mekanism 自己的 `general.maxUpgradeMultiplier` 完全同款：升级效果 = 该值 ^ (已装卡数 / 可装卡数)，10 就是 Mek 官方默认值 |
+| `upgradeCardsPerStep` | **8** | 多少张同类升级卡算一个倍率台阶；默认 8 = Mek 原版单类卡上限，**附属提高上限后会继续叠加**（16 张 = 底数²，24 张 = 底数³） |
 | `ejectEveryTick` | **true** | 本机开关：产物槽每 tick 往相邻容器 / 管道弹一次（Mekanism 默认 10 tick 一次）。**不影响生产速度** |
 | `globalEjectEveryTick` | **false** | 全局开关：所有 Mekanism 机器（本体机器、工厂、附属机械）的产物槽都每 tick 弹一次。**不影响生产速度** |
 
@@ -185,6 +186,7 @@ Copyright (c) 2026 woxin。
 
 ## 更新记录
 
+- **1.7.2**：并行/省电倍率不再用 `Upgrade#getMax()`（恒为 8）当分母，改为新增配置 `upgradeCardsPerStep`（默认 8）：附属把单机可插卡上限调到 16 / 24 / 32 张后，并行与省电会**继续按台阶叠加**（底数²、³、⁴），不再停在 10 倍；并行倍率上限从 4096 放宽到 1,048,576。发版流程新增 `tools/api_push.py`：git push 连不上 github.com 时自动改用 api.github.com 推送。
 - **1.7.1**：升级卡语义调整：速度卡改为增加并行产线、能量卡只省电；两者都不再增加种子槽容量，删除 `seedCapacityPerUpgrade` 配置项。
 - **1.7.0**：机器正面贴图换成新美术，**原图不改，只在底边点 1/2/3/4 个档位点**区分四档；
   新增两个「每 tick 出产物」开关：`ejectEveryTick`（本机，**默认开启**）与 `globalEjectEveryTick`（全局，**默认关闭**，

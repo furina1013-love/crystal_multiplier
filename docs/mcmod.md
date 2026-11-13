@@ -128,6 +128,7 @@ A = Mekanism 合金标签、C = Forge 电路标签、I = 锭标签、X = 钢机�
 | `baseSpeedMultiplier` | 4.0 | 全局基础速度倍率（提高会同步提高耗电/t，单次总电费不变） |
 | `baseEnergyMultiplier` | 0.5 | 全局基础耗电倍率（0.5 = 耗电减半） |
 | `maxUpgradeMultiplier` | 10 | 与 Mekanism 的 `general.maxUpgradeMultiplier` 同款：效果 = 该值^(已装/可装) |
+| `upgradeCardsPerStep` | 8 | 多少张卡算一个倍率台阶；默认 8 与 Mek 原版单类卡上限一致，附属提高上限后继续叠加 |
 | `ejectEveryTick` | true | 产物槽每 tick 往相邻容器 / 管道弹一次（Mek 默认 10 tick 一次），不影响生产速度 |
 | `globalEjectEveryTick` | false | 所有 Mekanism 机器都每 tick 弹一次产物，不影响生产速度 |
 
@@ -187,6 +188,7 @@ A = Mekanism 合金标签、C = Forge 电路标签、I = 锭标签、X = 钢机�
 
 ## 十一、更新记录
 
+- **1.7.2**：新增配置 `upgradeCardsPerStep`（默认 8），并行/省电倍率按「卡数 ÷ 该值」计算，附属提高单机插卡上限后可继续叠加；并行倍率上限放宽到 1,048,576。
 - **1.7.1**：升级卡语义调整：速度卡改为增加并行产线、能量卡只省电；两者都不再增加种子槽容量，删除 `seedCapacityPerUpgrade` 配置项。
 - **1.7.0**：机器正面贴图换成新美术，原图不动、只在底边点 1/2/3/4 个档位点区分四档；新增两个「每 tick 出产物」开关：`ejectEveryTick`（本机，**默认开启**）与 `globalEjectEveryTick`（**默认关闭**，通过 `EjectorMixin` 把 Mek 弹射器内部 10 tick 的 `tickDelay` 清零），生产速度不受影响，弹射器改到产出之后 tick，成品同一 tick 即可离开；种子改整除计并行；附加水晶（lattra / redstone）配方改为运行时自动生成。
 - **1.6.1**：修复 `@Redirect` 回调缺少被调用对象参数导致的 Mixin 注入失败；`ItemStack.of` 的 `RETURN` 注入补上 `cancellable = true`，修复大堆叠读档报错；存档 `Count` 写成 ≤64 的安全值。已用真实服务端验证注入、侧面输出抽取与 200 堆叠存档往返。

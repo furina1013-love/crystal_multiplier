@@ -19,6 +19,8 @@
   "crystal_multiplier.configuration.machine.ejectEveryTick.tooltip": "开启时水晶增殖机的产物槽每 tick 都往相邻容器/管道弹一次（Mekanism 默认 10 tick 一次）。不影响生产速度。默认开启。",
   "crystal_multiplier.configuration.machine.globalEjectEveryTick": "全局：所有 Mek 机器每 tick 弹出产物",
   "crystal_multiplier.configuration.machine.globalEjectEveryTick.tooltip": "开启后所有 Mekanism 机器（本体机器、工厂、附属机械）的产物槽都每 tick 弹出一次，而不是默认的 10 tick。不影响生产速度。默认关闭。",
+  "crystal_multiplier.configuration.machine.upgradeCardsPerStep": "多少张卡等于一个倍率台阶",
+  "crystal_multiplier.configuration.machine.upgradeCardsPerStep.tooltip": "每张速度卡把并行、每张能量卡把省电推进一个台阶；默认 8 与 Mek 原版单类卡上限一致，附属提高上限后会继续叠加。",
   "crystal_multiplier.configuration.machine.seedSlotCapCeiling": "种子槽容量上限",
   "crystal_multiplier.configuration.machine.seedSlotCapCeiling.tooltip": "种子槽容量的硬上限。",
   "crystal_multiplier.configuration.machine.tooltip": "水晶增殖机的并行、种子槽、速度与能耗参数。",
