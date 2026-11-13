@@ -28,6 +28,7 @@ public final class CrystalMultiplierConfig {
     public static final ForgeConfigSpec.DoubleValue BASE_SPEED_MULTIPLIER;
     public static final ForgeConfigSpec.DoubleValue BASE_ENERGY_MULTIPLIER;
     public static final ForgeConfigSpec.IntValue MAX_UPGRADE_MULTIPLIER;
+    public static final ForgeConfigSpec.IntValue UPGRADE_CARDS_PER_STEP;
     public static final ForgeConfigSpec.BooleanValue EJECT_EVERY_TICK;
     public static final ForgeConfigSpec.BooleanValue GLOBAL_EJECT_EVERY_TICK;
 
@@ -98,6 +99,15 @@ public final class CrystalMultiplierConfig {
                 .translation(LANG_PREFIX + ".globalEjectEveryTick")
                 .define("globalEjectEveryTick", false);
 
+        UPGRADE_CARDS_PER_STEP = builder
+                .comment("How many upgrade cards of one kind make up one full multiplier step.",
+                        "Vanilla Mekanism caps a machine at 8 cards per type, so the default 8 means",
+                        "8 speed cards = maxUpgradeMultiplier x more parallel lanes. Addons that raise",
+                        "the card cap keep multiplying beyond that: 16 cards = base^2, 24 = base^3, ...",
+                        "Lower this value to make every single card worth more.")
+                .translation(LANG_PREFIX + ".upgradeCardsPerStep")
+                .defineInRange("upgradeCardsPerStep", 8, 1, 512);
+
         builder.pop();
         SPEC = builder.build();
     }
@@ -147,6 +157,10 @@ public final class CrystalMultiplierConfig {
 
     public static double baseEnergyMultiplier() {
         return doubleOr(BASE_ENERGY_MULTIPLIER, 0.5D);
+    }
+
+    public static int upgradeCardsPerStep() {
+        return Math.max(1, intOr(UPGRADE_CARDS_PER_STEP, 8));
     }
 
     public static int maxUpgradeMultiplier() {

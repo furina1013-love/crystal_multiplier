@@ -134,6 +134,7 @@ Note: ExtendedAE for 1.20.1 (modid `expatternprovider`) does not ship `entro_cry
 | `baseSpeedMultiplier` | 4.0 | Global base speed multiplier (raises FE/t, total cost stays the same) |
 | `baseEnergyMultiplier` | 0.5 | Global base energy multiplier (0.5 = half cost) |
 | `maxUpgradeMultiplier` | 10 | Same option as Mekanism's `general.maxUpgradeMultiplier`: effect = value ^ (installed / possible) |
+| `upgradeCardsPerStep` | 8 | Cards per multiplier step; 8 matches the vanilla per-type cap, addons that raise the cap keep stacking beyond it |
 | `ejectEveryTick` | **true** | This machine only: push the finished products out of the output slots every tick instead of Mekanism's 10 tick interval (crafting speed untouched) |
 | `globalEjectEveryTick` | **false** | The same per tick item ejection for every Mekanism machine (own machines, factories, addons); crafting speed untouched |
 
@@ -189,6 +190,7 @@ progress arrow inside the machine (52,45,32,8) opens the matching recipe.
 
 ## Changelog
 
+- **1.7.2** — New `upgradeCardsPerStep` option (default 8) drives the parallel and energy-savings multiplier, so addons that raise the per-machine card cap keep scaling instead of stopping after one step. Parallel multiplier cap raised from 4,096 to 1,048,576; `tools/api_push.py` falls back to the GitHub API when git push cannot reach github.com.
 - **1.7.1** — Upgrade semantics changed: speed cards now add parallel lanes and energy cards only cut the draw; neither card enlarges the seed slot any more, and the `seedCapacityPerUpgrade` config key was removed.
 - **1.7.0** — New machine front art that leaves the original art alone and only stamps 1-4 tier pips; two new "eject every tick" switches: `ejectEveryTick` (this machine, **on** by default) and `globalEjectEveryTick` (**off** by default, applied to every Mekanism machine through `EjectorMixin`, which zeroes Mekanism's private 10 tick `tickDelay`); crafting speed is untouched and the ejector now runs after the products are made so items can leave in the same tick; seed counts are divided down instead of requiring an exact multiple; addon crystal recipes (lattra, redstone) are generated at reload time.
 - **1.6.1** — Fixed mixin injection: the `@Redirect` handlers now take the target `FriendlyByteBuf` as their first parameter, and the `ItemStack.of` `RETURN` injection is now `cancellable`, which fixes `Failed to load data for block entity` when large stacks are loaded from disk. The vanilla `Count` byte is written clamped to 64 while the real count lives in an extra int tag. Verified on a real Forge server: both mixins apply, output faces configured as item output can be extracted by pipes/hoppers, and a 200 item stack survives save -> restart -> load.

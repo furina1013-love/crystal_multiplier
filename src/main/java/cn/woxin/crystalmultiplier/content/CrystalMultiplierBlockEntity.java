@@ -256,9 +256,12 @@ public class CrystalMultiplierBlockEntity extends TileEntityMekanism implements 
         // Speed cards no longer speed the machine up: every card multiplies the number of parallel
         // lanes instead (base ^ cards/max, base = maxUpgradeMultiplier, so 8 cards = 10x lanes).
         double upgradeMultiplier = Math.max(1.0D, CrystalMultiplierConfig.maxUpgradeMultiplier());
-        double fractionSpeed = (double) this.getUpgradeCount(Upgrade.SPEED) / (double) Upgrade.SPEED.getMax();
-        double fractionEnergy = (double) this.getUpgradeCount(Upgrade.ENERGY) / (double) Upgrade.ENERGY.getMax();
-        double parallelFactor = Math.min(4096.0D, Math.pow(upgradeMultiplier, fractionSpeed));
+        // Normalise by the configured step (default 8 = the vanilla cap of 8 cards) instead of the
+        // enum max: addons that raise the per machine card cap keep scaling the lanes this way.
+        double step = (double) CrystalMultiplierConfig.upgradeCardsPerStep();
+        double fractionSpeed = (double) this.getUpgradeCount(Upgrade.SPEED) / step;
+        double fractionEnergy = (double) this.getUpgradeCount(Upgrade.ENERGY) / step;
+        double parallelFactor = Math.min(1_048_576.0D, Math.pow(upgradeMultiplier, fractionSpeed));
         int lanes = this.seedValid ? seedCount / perParallel : 0;
         this.parallelism = lanes <= 0 ? 0
                 : (int) Math.min((long) CrystalMultiplierConfig.maxParallel(), Math.round(lanes * parallelFactor));
