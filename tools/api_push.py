@@ -52,9 +52,12 @@ def iso(ts):
 
 
 def local_files():
+    # -z 避免 git 给非 ASCII 路径加引号和八进制转义
     files = {}
-    for line in git('ls-tree', '-r', 'HEAD').splitlines():
-        meta, path = line.split(chr(9), 1)
+    for chunk in git('ls-tree', '-r', '-z', 'HEAD').split(chr(0)):
+        if not chunk.strip():
+            continue
+        meta, path = chunk.split(chr(9), 1)
         mode, kind, sha = meta.split()
         if kind == 'blob':
             files[path] = (mode, sha)
