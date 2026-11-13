@@ -50,7 +50,8 @@ def iso(ts):
 def commit_meta(sha):
     out = git('log', '-1', '--format=%an|%ae|%at|%cn|%ce|%ct|%B', sha).split(chr(10), 1)
     head, body = out[0], (out[1] if len(out) > 1 else '')
-    an, ae, at, cn, ce, ct = head.split('|')
+    parts = head.split('|', 6)
+    an, ae, at, cn, ce, ct = parts[0], parts[1], parts[2], parts[3], parts[4], parts[5]
     return ({'name': an, 'email': ae, 'date': iso(at)},
             {'name': cn, 'email': ce, 'date': iso(ct)}, body)
 
@@ -70,7 +71,8 @@ def build_tree(base_tree, sha):
                    {'content': base64.b64encode(content).decode(), 'encoding': 'base64'})
         if '__error' in blob:
             raise SystemExit('blob %s 失败 %s' % (path, blob['__body']))
-        entries.append({'path': path, 'mode': '100644', 'type': 'blob', 'sha': blob['sha']})
+        mode = git('ls-tree', sha, '--', path).split()[0] if git('ls-tree', sha, '--', path) else '100644'
+        entries.append({'path': path, 'mode': mode, 'type': 'blob', 'sha': blob['sha']})
     tree = api('POST', '/repos/%s/git/trees' % REPO, {'base_tree': base_tree, 'tree': entries})
     if '__error' in tree:
         raise SystemExit('tree 失败 %s' % tree['__body'])
@@ -84,7 +86,11 @@ if '__error' in ref:
 remote = ref['object']['sha']
 print('remote main', remote[:12], '-> local', head[:12])
 
-if remote != head:
+remote_tree = api('GET', '/repos/%s/git/commits/%s' % (REPO, remote))['tree']['sha']
+head_tree = git('rev-parse', '%s^{tree}' % head).strip()
+if remote_tree == head_tree:
+    print('远端与本地内容一致，无需推送')
+elif remote != head:
     pending = [c for c in git('rev-list', '--reverse', '%s..%s' % (remote, head)).split() if c]
     print('待推提交', len(pending))
     parent = remote
@@ -107,7 +113,10 @@ if remote != head:
 
 if VER:
     tag = 'v' + VER
-    local_commit = git('rev-parse', 'refs/tags/%s^{commit}' % tag).strip()
+    local_commit = git('rev-parse', 'refs/remotes/origin/main').strip() or git('rev-parse', 'HEAD').strip()
+    ref_now = api('GET', '/repos/%s/git/ref/heads/main' % REPO)
+    if '__error' not in ref_now:
+        local_commit = ref_now['object']['sha']
     if not local_commit:
         raise SystemExit('本地没有 tag %s' % tag)
     existing = api('GET', '/repos/%s/git/ref/tags/%s' % (REPO, tag))
