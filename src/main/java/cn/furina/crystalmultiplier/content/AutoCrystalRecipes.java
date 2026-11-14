@@ -2,8 +2,12 @@ package cn.furina.crystalmultiplier.content;
 
 import cn.furina.crystalmultiplier.CrystalMultiplierMod;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 import java.util.Collection;
 import java.util.List;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimplePreparableReloadListener;
@@ -43,6 +47,14 @@ public final class AutoCrystalRecipes extends SimplePreparableReloadListener<Voi
             new Candidate("appflux", "redstone_crystal", 320, 280));
 
     /** Same shape as the datapack recipes: 2 crystals out, 16 seeds per parallel lane. */
+    /** Numbers used for crystals that are discovered by scanning the item registry. */
+    private static final int DEFAULT_ENERGY_PER_TICK = 320;
+    private static final int DEFAULT_TICKS = 280;
+
+    /** Mods whose "crystal" items are ore processing intermediates, not AE2 style crystals. */
+    private static final Set<String> BLACKLISTED_NAMESPACES = Set.of("minecraft", "mekanism",
+            CrystalMultiplierMod.MODID);
+
     private static final int RESULT_COUNT = 2;
     private static final int CRYSTALS_PER_PARALLEL = 16;
 
@@ -62,6 +74,15 @@ public final class AutoCrystalRecipes extends SimplePreparableReloadListener<Voi
         Collection<Recipe<?>> existing = this.recipeManager.getRecipes();
         List<Recipe<?>> all = new ArrayList<>(existing.size() + CANDIDATES.size());
         all.addAll(existing);
+        // 已经有配方的种子不再重复生成
+        Set<Item> covered = new HashSet<>();
+        for (Recipe<?> recipe : existing) {
+            if (recipe instanceof CrystalMultiplicationRecipe multi) {
+                for (ItemStack stack : multi.getSeed().getItems()) {
+                    covered.add(stack.getItem());
+                }
+            }
+        }
         int added = 0;
         for (Candidate candidate : CANDIDATES) {
             if (!ModList.get().isLoaded(candidate.modId())) {
@@ -78,6 +99,32 @@ public final class AutoCrystalRecipes extends SimplePreparableReloadListener<Voi
             }
             all.add(new CrystalMultiplicationRecipe(id, Ingredient.of(item), new ItemStack(item, RESULT_COUNT),
                     candidate.energyPerTick(), candidate.ticks(), CRYSTALS_PER_PARALLEL));
+            covered.add(item);
+            added++;
+        }
+        // 兜底：扫描注册表，任何模组里 id 带 crystal 的物品都补一条配方，
+        // 这样 AE2 附属（appflux / extendedae / 其它）里的水晶不需要一个个手写。
+        for (Map.Entry<ResourceKey<Item>, Item> entry : ForgeRegistries.ITEMS.getEntries()) {
+            ResourceLocation itemId = entry.getKey().location();
+            if (!itemId.getPath().contains("crystal")) {
+                continue;
+            }
+            String namespace = itemId.getNamespace();
+            if (BLACKLISTED_NAMESPACES.contains(namespace) || !ModList.get().isLoaded(namespace)) {
+                continue;
+            }
+            Item item = entry.getValue();
+            if (!covered.add(item)) {
+                continue;
+            }
+            ResourceLocation recipeId = new ResourceLocation(CrystalMultiplierMod.MODID,
+                    "crystal_multiplication/auto_" + namespace + "_" + itemId.getPath());
+            if (this.recipeManager.byKey(recipeId).isPresent()) {
+                continue;
+            }
+            all.add(new CrystalMultiplicationRecipe(recipeId, Ingredient.of(item),
+                    new ItemStack(item, RESULT_COUNT), DEFAULT_ENERGY_PER_TICK, DEFAULT_TICKS,
+                    CRYSTALS_PER_PARALLEL));
             added++;
         }
         if (added > 0) {
