@@ -2,6 +2,7 @@
 # Manual build chain for crystal_multiplier 1.20.1 (Gradle is unusable in this sandbox).
 # usage: build.sh <version>   e.g. build.sh 1.3.0
 set -e
+MCVER=1.20.1
 VER="${1:?version required}"
 PROJ=/root/java-mod-dev/crystal_multiplier
 G=/data/data/dsh.android.client/files/linux/ubuntu/root/.gradle
@@ -42,14 +43,14 @@ PYEOF
 echo "[3/3] reobfuscate official -> srg (FART)"
 LIBS=""
 for j in /root/libs/*.jar $(find $G/caches/modules-2 -name '*.jar'); do LIBS="$LIBS --lib $j"; done
-$JAVA/bin/java -jar $FART --input /tmp/mbuild/dev-$VER.jar --output build/libs/crystal_multiplier-$VER.jar --map build/reobfJar/mappings.tsrg --lib "$FORGE" $LIBS > /tmp/fart.log 2>&1
+$JAVA/bin/java -jar $FART --input /tmp/mbuild/dev-$VER.jar --output build/libs/crystal_multiplier-$VER-mc1.20.1.jar --map build/reobfJar/mappings.tsrg --lib "$FORGE" $LIBS > /tmp/fart.log 2>&1
 grep "Can't Find Class" /tmp/fart.log || true
 python3 - "$VER" <<'PYEOF'
 import zipfile, sys
 ver=sys.argv[1]
-z=zipfile.ZipFile("/root/java-mod-dev/crystal_multiplier/build/libs/crystal_multiplier-%s.jar"%ver)
+z=zipfile.ZipFile("/root/java-mod-dev/crystal_multiplier/build/libs/crystal_multiplier-%s-mc1.20.1.jar"%ver)
 n=z.namelist()
-print("  final entries",len(n),"classes",len([x for x in n if x.endswith('.class')]),"size",__import__("os").path.getsize("/root/java-mod-dev/crystal_multiplier/build/libs/crystal_multiplier-%s.jar"%ver))
+print("  final entries",len(n),"classes",len([x for x in n if x.endswith('.class')]),"size",__import__("os").path.getsize("/root/java-mod-dev/crystal_multiplier/build/libs/crystal_multiplier-%s-mc1.20.1.jar"%ver))
 print("  testzip", z.testzip())
 print("  toml", [l for l in z.read("META-INF/mods.toml").decode().splitlines() if l.startswith("version")])
 PYEOF
