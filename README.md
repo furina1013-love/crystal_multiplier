@@ -186,6 +186,7 @@ Copyright (c) 2026 芙宁娜重度依赖（b站：furina重度依赖-1013）。
 
 ## 更新记录
 
+- **1.7.7**：机器**正面与侧面统一使用 1.0.0 版的侧面贴图**（四档配色仍各自独立），删掉 1.7.0 版已不用的 `*_front.png` / `*_front_active.png`，模型改为直接引用 sides，机器外观回到简洁风格。与 1.21.1 版对齐。
 - **1.7.6**：包名 `cn.woxin.crystalmultiplier` 改为 `cn.furina.crystalmultiplier`（旧作者名不再出现在 jar 里），manifest 的 vendor 同步更新。功能与 1.7.5 一致。
 - **1.7.5**：构建产物文件名带上游戏版本（`crystal_multiplier-<版本>-mc1.20.1.jar`）。1.21.1 / NeoForge 版同步到 1.7.5：修正面 GUI 尺寸与标签页位置、侧面配置默认打开物品页、机器刚放下时能量每个面都是输入。功能与 1.7.4 一致。
 - **1.7.4**：修 jar 内 `META-INF/LICENSE` 仍署旧作者名（woxin）的问题，版权行统一为「芙宁娜重度依赖（b站：furina重度依赖-1013）」。功能与 1.7.3 一致。

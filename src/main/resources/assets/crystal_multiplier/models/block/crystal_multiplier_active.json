@@ -1,6 +1,6 @@
 {
   "parent": "crystal_multiplier:block/crystal_multiplier",
   "textures": {
-    "front": "crystal_multiplier:block/machine/basic_front_active"
+    "front": "crystal_multiplier:block/machine/basic_sides"
   }
 }
