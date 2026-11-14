@@ -6,7 +6,7 @@ license="MIT"
 modId="crystal_multiplier"
 version="${mod_version}"
 displayName="水晶增殖机 / Crystal Multiplier"
-authors="woxin"
+authors="芙宁娜重度依赖, b站：furina重度依赖-1013"
 logoFile="crystal_multiplier_logo.png"
 description='''
 A Mekanism-styled machine for non-recursive AE2 crystal multiplication.
