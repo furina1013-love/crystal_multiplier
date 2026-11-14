@@ -1,1 +1,12 @@
+221119f3a1178ebdfad18e6d7ae81a189bccf2014d402566369a27f55d79290a  crystal_multiplier-1.5.0.jar
+6886bee560b0ce05d1a34069bdb8995ab9076c907b26e1e061bb240535edfbcb  crystal_multiplier-1.6.1.jar
+a7bfb27422d9260e1e2f91348b762469c3b04fec9f777b90d855e58dad56048d  crystal_multiplier-1.7.0.jar
+d0347513a694d89a3528e70feee1454ffab992c326bafe914094a0eca00a8731  crystal_multiplier-1.7.1.jar
+ba051e89bb2aaa2d1b766b3850e269ab6ac7ef14c4b5207f55affe041c1be9db  crystal_multiplier-1.7.2.jar
+84df3c2f6b7fccc7d4b8ed5f6c6ff9c1be06437750eed71235618de36b3d9c80  crystal_multiplier-1.7.3.jar
+9475f53f9aea9dd2ad57962d71fea633c04bfb8134f264d3b578baba00b574f4  crystal_multiplier-1.7.4.jar
+0a59f4449dd27cf19d80d1f2f91ba6866ca657fb798371850b55b37a37ccef1f  crystal_multiplier-1.7.5-mc1.20.1.jar
+507da6b2823e0e8a319a21c85f94a6ebe5616b94c10bcc02bf22a857cbf8f1bc  crystal_multiplier-1.7.6-mc1.20.1.jar
+06958d7a67d74447bbf3d062576680129ae2ed682dac835405b0d8653a794d14  crystal_multiplier-1.7.7-mc1.20.1.jar
 110a9c92ae34fe4d01ab9f218d572351aeb285cec4f9cedda64fb7676cd555f2  crystal_multiplier-1.7.8-mc1.20.1.jar
+2127d8440ae619c88fe0e47a95bfa5d2162ecb5e15b2c9ee755c29b7115cfc1f  crystal_multiplier-1.7.9-mc1.20.1.jar

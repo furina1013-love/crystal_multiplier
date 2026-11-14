@@ -186,6 +186,7 @@ Copyright (c) 2026 芙宁娜重度依赖（b站：furina重度依赖-1013）。
 
 ## 更新记录
 
+- **1.7.9**：贴图目录精简为每档只剩 `front` / `front_active`（侧面与顶面贴图已移除，六面统一使用正面图）；配方自动生成收紧——只接受**模组 id 带 ae/app/applied/mega 特征的 AE 生态物品**，并排除可放置方块与工具类物品，避免给无关物品乱配配方。
 - **1.7.8**：正面贴图换回正式版 `*_front.png` / `*_front_active.png`（保留运行流光动画），侧面保持 1.0.0 版侧面；中文名后附英文（`水晶增殖机 (Crystal Multiplier)`），中英文搜索都能找到；配方生成新增注册表兜底扫描——任何模组里 id 带 `crystal` 的物品都会自动补一条增殖配方（Mekanism 矿石处理水晶与 minecraft 除外），AE2 附属水晶不用再逐个手写。
 - **1.7.7**：机器**正面与侧面统一使用 1.0.0 版的侧面贴图**（四档配色仍各自独立），删掉 1.7.0 版已不用的 `*_front.png` / `*_front_active.png`，模型改为直接引用 sides，机器外观回到简洁风格。与 1.21.1 版对齐。
 - **1.7.6**：包名 `cn.woxin.crystalmultiplier` 改为 `cn.furina.crystalmultiplier`（旧作者名不再出现在 jar 里），manifest 的 vendor 同步更新。功能与 1.7.5 一致。

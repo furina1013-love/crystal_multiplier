@@ -9,10 +9,12 @@ import java.util.Collection;
 import java.util.List;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.ItemTags;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimplePreparableReloadListener;
 import net.minecraft.util.profiling.ProfilerFiller;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.Ingredient;
@@ -113,7 +115,19 @@ public final class AutoCrystalRecipes extends SimplePreparableReloadListener<Voi
             if (BLACKLISTED_NAMESPACES.contains(namespace) || !ModList.get().isLoaded(namespace)) {
                 continue;
             }
+            // 只兼容 AE 生态（模组 id 带 ae / app / applied / mega 这些特征）
+            if (!isAeAddon(namespace)) {
+                continue;
+            }
             Item item = entry.getValue();
+            // 可放置的方块物品不要（水晶应该是纯物品）
+            if (item instanceof BlockItem) {
+                continue;
+            }
+            // 工具类也不要
+            if (isToolLike(item)) {
+                continue;
+            }
             if (!covered.add(item)) {
                 continue;
             }
@@ -135,5 +149,18 @@ public final class AutoCrystalRecipes extends SimplePreparableReloadListener<Voi
     @Override
     public @NotNull String getName() {
         return CrystalMultiplierMod.MODID + ":auto_crystal_recipes";
+    }
+
+    /** AE 生态判定：模组 id 里带 ae / app / applied / mega 之类特征才算水晶来源。 */
+    private static boolean isAeAddon(String namespace) {
+        return namespace.contains("ae") || namespace.startsWith("app")
+                || namespace.contains("applied") || namespace.contains("mega");
+    }
+
+    /** 工具类物品（镐斧锹锄剑/剪刀之类）不算水晶。 */
+    private static boolean isToolLike(Item item) {
+        ItemStack stack = new ItemStack(item);
+        return stack.is(ItemTags.PICKAXES) || stack.is(ItemTags.SHOVELS) || stack.is(ItemTags.AXES)
+                || stack.is(ItemTags.HOES) || stack.is(ItemTags.SWORDS);
     }
 }
