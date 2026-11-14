@@ -1,8 +1,8 @@
-package cn.woxin.crystalmultiplier.compat.jei;
+package cn.furina.crystalmultiplier.compat.jei;
 
-import cn.woxin.crystalmultiplier.CrystalMultiplierMod;
-import cn.woxin.crystalmultiplier.client.CrystalMultiplierScreen;
-import cn.woxin.crystalmultiplier.content.CrystalMultiplicationRecipe;
+import cn.furina.crystalmultiplier.CrystalMultiplierMod;
+import cn.furina.crystalmultiplier.client.CrystalMultiplierScreen;
+import cn.furina.crystalmultiplier.content.CrystalMultiplicationRecipe;
 import java.util.ArrayList;
 import java.util.List;
 import mezz.jei.api.IModPlugin;

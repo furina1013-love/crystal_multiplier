@@ -1,7 +1,7 @@
-package cn.woxin.crystalmultiplier.mixin;
+package cn.furina.crystalmultiplier.mixin;
 
-import cn.woxin.crystalmultiplier.config.CrystalMultiplierConfig;
-import cn.woxin.crystalmultiplier.content.CrystalMultiplierBlockEntity;
+import cn.furina.crystalmultiplier.config.CrystalMultiplierConfig;
+import cn.furina.crystalmultiplier.content.CrystalMultiplierBlockEntity;
 import mekanism.common.tile.base.TileEntityMekanism;
 import mekanism.common.tile.component.TileComponentEjector;
 import org.spongepowered.asm.mixin.Mixin;

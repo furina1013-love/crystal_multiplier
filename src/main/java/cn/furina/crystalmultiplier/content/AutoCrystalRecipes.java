@@ -1,6 +1,6 @@
-package cn.woxin.crystalmultiplier.content;
+package cn.furina.crystalmultiplier.content;
 
-import cn.woxin.crystalmultiplier.CrystalMultiplierMod;
+import cn.furina.crystalmultiplier.CrystalMultiplierMod;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;

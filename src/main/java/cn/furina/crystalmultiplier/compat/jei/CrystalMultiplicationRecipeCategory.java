@@ -1,6 +1,6 @@
-package cn.woxin.crystalmultiplier.compat.jei;
+package cn.furina.crystalmultiplier.compat.jei;
 
-import cn.woxin.crystalmultiplier.content.CrystalMultiplicationRecipe;
+import cn.furina.crystalmultiplier.content.CrystalMultiplicationRecipe;
 import mezz.jei.api.gui.builder.IRecipeLayoutBuilder;
 import mezz.jei.api.gui.drawable.IDrawable;
 import mezz.jei.api.gui.ingredient.IRecipeSlotsView;

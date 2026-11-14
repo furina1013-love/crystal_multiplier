@@ -1,8 +1,8 @@
-package cn.woxin.crystalmultiplier.menu;
+package cn.furina.crystalmultiplier.menu;
 
-import cn.woxin.crystalmultiplier.CrystalMultiplierMod;
-import cn.woxin.crystalmultiplier.content.CrystalMultiplierBlockEntity;
-import cn.woxin.crystalmultiplier.content.CrystalSlot;
+import cn.furina.crystalmultiplier.CrystalMultiplierMod;
+import cn.furina.crystalmultiplier.content.CrystalMultiplierBlockEntity;
+import cn.furina.crystalmultiplier.content.CrystalSlot;
 import java.util.ArrayList;
 import java.util.List;
 import mekanism.api.Action;

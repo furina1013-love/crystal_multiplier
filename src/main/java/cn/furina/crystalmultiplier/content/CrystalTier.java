@@ -1,4 +1,4 @@
-package cn.woxin.crystalmultiplier.content;
+package cn.furina.crystalmultiplier.content;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;

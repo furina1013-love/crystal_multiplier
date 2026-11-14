@@ -1,4 +1,4 @@
-package cn.woxin.crystalmultiplier.mixin;
+package cn.furina.crystalmultiplier.mixin;
 
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;

@@ -3,8 +3,8 @@ plugins {
     id 'net.minecraftforge.gradle' version '[6.0.16,6.2)'
 }
 
-version = '1.7.5'
-group = 'cn.woxin.crystalmultiplier'
+version = '1.7.6'
+group = 'cn.furina.crystalmultiplier'
 base { archivesName = 'crystal_multiplier' }
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
@@ -58,11 +58,11 @@ jar {
     manifest {
         attributes([
             'Specification-Title'     : 'crystal_multiplier',
-            'Specification-Vendor'    : 'woxin',
+            'Specification-Vendor'    : '芙宁娜重度依赖',
             'Specification-Version'   : '1',
             'Implementation-Title'    : project.name,
             'Implementation-Version'  : project.version,
-            'Implementation-Vendor'   : 'woxin',
+            'Implementation-Vendor'   : '芙宁娜重度依赖',
             'MixinConfigs'            : 'crystal_multiplier.mixins.json'
         ])
     }

@@ -1,12 +1,12 @@
-package cn.woxin.crystalmultiplier;
+package cn.furina.crystalmultiplier;
 
-import cn.woxin.crystalmultiplier.config.CrystalMultiplierConfig;
-import cn.woxin.crystalmultiplier.content.AutoCrystalRecipes;
-import cn.woxin.crystalmultiplier.content.CrystalMultiplierBlock;
-import cn.woxin.crystalmultiplier.content.CrystalMultiplierBlockEntity;
-import cn.woxin.crystalmultiplier.content.CrystalMultiplicationRecipe;
-import cn.woxin.crystalmultiplier.content.CrystalTier;
-import cn.woxin.crystalmultiplier.menu.CrystalMultiplierMenu;
+import cn.furina.crystalmultiplier.config.CrystalMultiplierConfig;
+import cn.furina.crystalmultiplier.content.AutoCrystalRecipes;
+import cn.furina.crystalmultiplier.content.CrystalMultiplierBlock;
+import cn.furina.crystalmultiplier.content.CrystalMultiplierBlockEntity;
+import cn.furina.crystalmultiplier.content.CrystalMultiplicationRecipe;
+import cn.furina.crystalmultiplier.content.CrystalTier;
+import cn.furina.crystalmultiplier.menu.CrystalMultiplierMenu;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
