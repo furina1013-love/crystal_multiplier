@@ -43,7 +43,7 @@ PYEOF
 echo "[3/3] reobfuscate official -> srg (FART)"
 LIBS=""
 for j in /root/libs/*.jar $(find $G/caches/modules-2 -name '*.jar'); do LIBS="$LIBS --lib $j"; done
-$JAVA/bin/java -jar $FART --input /tmp/mbuild/dev-$VER.jar --output build/libs/crystal_multiplier-$VER-mc$MCVER.jar --map build/reobfJar/mappings.tsrg --lib "$FORGE" $LIBS > /tmp/fart.log 2>&1
+$JAVA/bin/java -jar $FART --input /tmp/mbuild/dev-$VER.jar --output build/libs/crystal_multiplier-$VER-mc1.20.1.jar --map build/reobfJar/mappings.tsrg --lib "$FORGE" $LIBS > /tmp/fart.log 2>&1
 grep "Can't Find Class" /tmp/fart.log || true
 python3 - "$VER" <<'PYEOF'
 import zipfile, sys
