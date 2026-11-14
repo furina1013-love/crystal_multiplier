@@ -1,9 +1,9 @@
 {
   "parent": "mekanism:block/machine",
   "textures": {
-    "sides": "crystal_multiplier:block/machine/basic_sides",
-    "up": "crystal_multiplier:block/machine/basic_top",
-    "down": "crystal_multiplier:block/machine/basic_top",
+    "sides": "crystal_multiplier:block/machine/basic_front",
+    "up": "crystal_multiplier:block/machine/basic_front",
+    "down": "crystal_multiplier:block/machine/basic_front",
     "front": "crystal_multiplier:block/machine/basic_front"
   }
 }
