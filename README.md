@@ -186,6 +186,7 @@ Copyright (c) 2026 芙宁娜重度依赖（b站：furina重度依赖-1013）。
 
 ## 更新记录
 
+- **1.7.4**：修 jar 内 `META-INF/LICENSE` 仍署旧作者名（woxin）的问题，版权行统一为「芙宁娜重度依赖（b站：furina重度依赖-1013）」。功能与 1.7.3 一致。
 - **1.7.3**：作者改为 **芙宁娜重度依赖**、**b站：furina重度依赖-1013**（mods.toml 的 authors、LICENSE 与 README 版权行同步）。功能与 1.7.2 一致。
 - **1.7.2**：并行/省电倍率不再用 `Upgrade#getMax()`（恒为 8）当分母，改为新增配置 `upgradeCardsPerStep`（默认 8）：附属把单机可插卡上限调到 16 / 24 / 32 张后，并行与省电会**继续按台阶叠加**（底数²、³、⁴），不再停在 10 倍；并行倍率上限从 4096 放宽到 1,048,576。发版流程新增 `tools/api_push.py`：git push 连不上 github.com 时自动改用 api.github.com 推送。
 - **1.7.1**：升级卡语义调整：速度卡改为增加并行产线、能量卡只省电；两者都不再增加种子槽容量，删除 `seedCapacityPerUpgrade` 配置项。
