@@ -4,6 +4,6 @@
     "sides": "crystal_multiplier:block/machine/ultimate_sides",
     "up": "crystal_multiplier:block/machine/ultimate_top",
     "down": "crystal_multiplier:block/machine/ultimate_top",
-    "front": "crystal_multiplier:block/machine/ultimate_front"
+    "front": "crystal_multiplier:block/machine/ultimate_sides"
   }
 }
