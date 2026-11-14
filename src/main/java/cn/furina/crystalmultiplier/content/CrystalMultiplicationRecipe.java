@@ -1,4 +1,4 @@
-package cn.woxin.crystalmultiplier.content;
+package cn.furina.crystalmultiplier.content;
 
 import com.google.gson.JsonObject;
 import net.minecraft.core.NonNullList;
@@ -109,7 +109,7 @@ public class CrystalMultiplicationRecipe implements Recipe<Container> {
 
     @Override
     public RecipeSerializer<?> getSerializer() {
-        return cn.woxin.crystalmultiplier.CrystalMultiplierMod.MULTIPLICATION_SERIALIZER.get();
+        return cn.furina.crystalmultiplier.CrystalMultiplierMod.MULTIPLICATION_SERIALIZER.get();
     }
 
     @Override

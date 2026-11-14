@@ -1,4 +1,4 @@
-package cn.woxin.crystalmultiplier.content;
+package cn.furina.crystalmultiplier.content;
 
 import mekanism.common.upgrade.IUpgradeData;
 import net.minecraft.nbt.CompoundTag;

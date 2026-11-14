@@ -1,8 +1,8 @@
-package cn.woxin.crystalmultiplier.client;
+package cn.furina.crystalmultiplier.client;
 
-import cn.woxin.crystalmultiplier.content.CrystalMultiplierBlockEntity;
-import cn.woxin.crystalmultiplier.content.CrystalSlot;
-import cn.woxin.crystalmultiplier.menu.CrystalMultiplierMenu;
+import cn.furina.crystalmultiplier.content.CrystalMultiplierBlockEntity;
+import cn.furina.crystalmultiplier.content.CrystalSlot;
+import cn.furina.crystalmultiplier.menu.CrystalMultiplierMenu;
 import java.util.List;
 import mekanism.client.gui.GuiConfigurableTile;
 import mekanism.client.gui.element.tab.GuiEnergyTab;

@@ -1,4 +1,4 @@
-package cn.woxin.crystalmultiplier.mixin;
+package cn.furina.crystalmultiplier.mixin;
 
 import io.netty.buffer.ByteBuf;
 import net.minecraft.network.FriendlyByteBuf;

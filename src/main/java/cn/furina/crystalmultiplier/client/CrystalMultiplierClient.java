@@ -1,6 +1,6 @@
-package cn.woxin.crystalmultiplier.client;
+package cn.furina.crystalmultiplier.client;
 
-import cn.woxin.crystalmultiplier.CrystalMultiplierMod;
+import cn.furina.crystalmultiplier.CrystalMultiplierMod;
 import mekanism.client.ClientRegistrationUtil;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.eventbus.api.SubscribeEvent;

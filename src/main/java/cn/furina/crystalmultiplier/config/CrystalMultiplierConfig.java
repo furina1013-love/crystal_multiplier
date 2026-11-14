@@ -1,4 +1,4 @@
-package cn.woxin.crystalmultiplier.config;
+package cn.furina.crystalmultiplier.config;
 
 import net.minecraftforge.common.ForgeConfigSpec;
 

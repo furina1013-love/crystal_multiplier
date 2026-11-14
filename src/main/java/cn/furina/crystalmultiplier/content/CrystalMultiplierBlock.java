@@ -1,4 +1,4 @@
-package cn.woxin.crystalmultiplier.content;
+package cn.furina.crystalmultiplier.content;
 
 import mekanism.api.Action;
 import mekanism.api.AutomationType;

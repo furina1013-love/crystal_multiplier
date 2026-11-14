@@ -1,4 +1,4 @@
-package cn.woxin.crystalmultiplier.content;
+package cn.furina.crystalmultiplier.content;
 
 import java.util.function.IntSupplier;
 import mekanism.api.Action;
