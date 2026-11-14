@@ -18,7 +18,7 @@ echo "[2/5] 构建"
 "$ROOT/tools/build.sh" "$VER"
 
 echo "[3/5] 产物入 dist + 校验和"
-cp -f "build/libs/crystal_multiplier-$VER.jar" dist/
+cp -f "build/libs/crystal_multiplier-$VER-mc1.20.1.jar" dist/
 ( cd dist && sha256sum crystal_multiplier-*.jar > SHA256SUMS.txt )
 
 echo "[4/5] 提交 + 打 tag + 推送"

@@ -56,7 +56,7 @@ def call(method, url, data=None, ctype='application/json'):
 
 
 body = changelog(VER) or ('## ' + VER)
-jar = 'crystal_multiplier-%s.jar' % VER
+jar = 'crystal_multiplier-%s-mc1.20.1.jar' % VER
 if os.path.exists(os.path.join(DIST, jar)):
     body += '\n\n### 下载\n`dist/%s`（SHA-256 见 `SHA256SUMS.txt`）' % jar
 
