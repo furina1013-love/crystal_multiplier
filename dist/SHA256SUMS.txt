@@ -8,4 +8,4 @@ ba051e89bb2aaa2d1b766b3850e269ab6ac7ef14c4b5207f55affe041c1be9db  crystal_multip
 f5976d3bf7ea7c175015edad73170a5de3185437b2d152ab4ba5ca5180d68df8  crystal_multiplier-1.7.5-mc1.20.1.jar
 507da6b2823e0e8a319a21c85f94a6ebe5616b94c10bcc02bf22a857cbf8f1bc  crystal_multiplier-1.7.6-mc1.20.1.jar
 06958d7a67d74447bbf3d062576680129ae2ed682dac835405b0d8653a794d14  crystal_multiplier-1.7.7-mc1.20.1.jar
-1d03b99eda700f0a556b5b4a96f208055b8aa3feb5102cbcf6ae47465f4be354  crystal_multiplier-1.7.8-mc1.20.1.jar
+ca28f90e309d79c77a94d24ba68584ccb537978b5b1feb16712f8a5a3a223ac9  crystal_multiplier-1.7.8-mc1.20.1.jar
