@@ -9,7 +9,9 @@ import java.util.Collection;
 import java.util.List;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.tags.ItemTags;
+import net.minecraft.tags.TagKey;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimplePreparableReloadListener;
 import net.minecraft.util.profiling.ProfilerFiller;
@@ -56,6 +58,15 @@ public final class AutoCrystalRecipes extends SimplePreparableReloadListener<Voi
     /** Mods whose "crystal" items are ore processing intermediates, not AE2 style crystals. */
     private static final Set<String> BLACKLISTED_NAMESPACES = Set.of("minecraft", "mekanism",
             CrystalMultiplierMod.MODID);
+
+
+    /** 通用工具标签（"c:tools"，Forge/NeoForge 生态通用），覆盖未被 vanilla 工具标签收录的模组工具。 */
+    private static final TagKey<Item> C_TOOLS = TagKey.create(Registries.ITEM, new ResourceLocation("c", "tools"));
+
+    /** 名字里带 seed 的是种子而不是水晶本体。 */
+    private static boolean isSeedLike(String path) {
+        return path.contains("seed");
+    }
 
     private static final int RESULT_COUNT = 2;
     private static final int CRYSTALS_PER_PARALLEL = 16;
@@ -111,6 +122,10 @@ public final class AutoCrystalRecipes extends SimplePreparableReloadListener<Voi
             if (!itemId.getPath().contains("crystal")) {
                 continue;
             }
+            // 水晶种子之类（如水晶科技的水晶种子）不是水晶本体，跳过
+            if (isSeedLike(itemId.getPath())) {
+                continue;
+            }
             String namespace = itemId.getNamespace();
             if (BLACKLISTED_NAMESPACES.contains(namespace) || !ModList.get().isLoaded(namespace)) {
                 continue;
@@ -161,6 +176,6 @@ public final class AutoCrystalRecipes extends SimplePreparableReloadListener<Voi
     private static boolean isToolLike(Item item) {
         ItemStack stack = new ItemStack(item);
         return stack.is(ItemTags.PICKAXES) || stack.is(ItemTags.SHOVELS) || stack.is(ItemTags.AXES)
-                || stack.is(ItemTags.HOES) || stack.is(ItemTags.SWORDS);
+                || stack.is(ItemTags.HOES) || stack.is(ItemTags.SWORDS) || stack.is(C_TOOLS);
     }
 }
