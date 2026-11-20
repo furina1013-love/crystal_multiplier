@@ -33,6 +33,7 @@
   "crystal_multiplier.configuration.machine.seedSlotCapCeiling": "种子槽容量上限",
   "crystal_multiplier.configuration.machine.seedSlotCapCeiling.tooltip": "种子槽容量的硬上限。",
   "crystal_multiplier.configuration.machine.tooltip": "水晶增殖机的并行、种子槽、速度与能耗参数。",
+  "emi.category.crystal_multiplier.crystal_multiplication": "水晶增殖",
   "gui.crystal_multiplier.seed_stored": "种子: %s / %s",
   "gui.crystal_multiplier.stored": "存量: %s / %s",
   "gui.crystal_multiplier.tip_seed": "种子不会被消耗：机器只是照着它复制，放多少就一直在。",
@@ -48,5 +49,7 @@
   "tier.crystal_multiplier.advanced": "高级",
   "tier.crystal_multiplier.basic": "基础",
   "tier.crystal_multiplier.elite": "精英",
-  "tier.crystal_multiplier.ultimate": "终极"
+  "tier.crystal_multiplier.ultimate": "终极",
+  "jade.crystal_multiplier.info": "档位: %s   并行: %s",
+  "jade.crystal_multiplier.status": "运行: %s   进度: %s%%"
 }

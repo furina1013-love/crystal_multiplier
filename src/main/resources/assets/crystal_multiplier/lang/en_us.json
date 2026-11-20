@@ -33,6 +33,7 @@
   "crystal_multiplier.configuration.machine.seedSlotCapCeiling": "Maximum seed slot capacity",
   "crystal_multiplier.configuration.machine.seedSlotCapCeiling.tooltip": "Hard upper bound of the seed slot capacity.",
   "crystal_multiplier.configuration.machine.tooltip": "Parallelism, seed slot, speed and energy settings of the Crystal Multiplier.",
+  "emi.category.crystal_multiplier.crystal_multiplication": "Crystal Multiplication",
   "gui.crystal_multiplier.seed_stored": "Seeds: %s / %s",
   "gui.crystal_multiplier.stored": "Stored: %s / %s",
   "gui.crystal_multiplier.tip_seed": "The seed is never used up: the machine copies it instead of consuming it.",
@@ -48,5 +49,7 @@
   "tier.crystal_multiplier.advanced": "Advanced",
   "tier.crystal_multiplier.basic": "Basic",
   "tier.crystal_multiplier.elite": "Elite",
-  "tier.crystal_multiplier.ultimate": "Ultimate"
+  "tier.crystal_multiplier.ultimate": "Ultimate",
+  "jade.crystal_multiplier.info": "Tier: %s   Parallel: %s",
+  "jade.crystal_multiplier.status": "Running: %s   Progress: %s%%"
 }

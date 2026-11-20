@@ -56,9 +56,10 @@ def call(method, url, data=None, ctype='application/json'):
 
 
 body = changelog(VER) or ('## ' + VER)
-jar = 'crystal_multiplier-%s-mc1.20.1.jar' % VER
-if os.path.exists(os.path.join(DIST, jar)):
-    body += '\n\n### 下载\n`dist/%s`（SHA-256 见 `SHA256SUMS.txt`）' % jar
+import glob
+jars = sorted(os.path.basename(x) for x in glob.glob(os.path.join(DIST, 'crystal_multiplier-%s-mc*.jar' % VER)))
+if jars:
+    body += chr(10) + chr(10) + '### 下载' + chr(10) + chr(10).join('- ' + BT + '%s' + BT % j for j in jars)
 
 payload = json.dumps({'tag_name': TAG, 'target_commitish': 'main', 'name': VER,
                       'body': body, 'draft': False, 'prerelease': False}).encode('utf-8')
@@ -68,7 +69,7 @@ if '__error' in rel:
 print('release', rel['html_url'])
 
 base = rel['upload_url'].split('{')[0]
-assets = [(jar, 'application/java-archive'), ('SHA256SUMS.txt', 'text/plain'), ('cover.png', 'image/png'), ('LICENSE', 'text/plain')]
+assets = [(j, 'application/java-archive') for j in jars] + [('SHA256SUMS.txt', 'text/plain'), ('cover.png', 'image/png'), ('LICENSE', 'text/plain')]
 for name, ctype in assets:
     path = os.path.join(ROOT, name) if name == 'LICENSE' else os.path.join(DIST, name)
     if not os.path.exists(path):

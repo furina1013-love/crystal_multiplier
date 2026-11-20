@@ -186,6 +186,7 @@ Copyright (c) 2026 芙宁娜重度依赖（b站：furina重度依赖-1013）。
 
 ## 更新记录
 
+- **1.8.1**：新增 **EMI** 配方页与 **Jade** 方块信息兼容（都是可选依赖，没装不影响加载）；构建提速（Gradle 常驻 daemon + 并行 + 构建缓存 + 配置缓存，热构建 25s→2s）；发版方式改为**一个版本一个 Release**，同一个 Release 里同时提供 `mc1.20.1` 与 `mc1.21.1` 两个 jar。
 - **1.8.0**（功能版）：机器五面随机水晶贴图（首次启动从已安装模组的水晶方块里抽 5 张、写进 `config/crystal_multiplier_side_textures.json` 后固定）；配方数值可配（`defaultCrystalEnergyPerTick` / `defaultCrystalTicks` / `recipeOverrides`）；新增 `disableAutoRecipes` 与 `configVersion` 配置；GUI 与升级卡悬停提示补全（种子不消耗、并行算法、速度卡/能量卡作用）；产量弹出时加音效与粒子；比较器输出按进度与种子存量给 0-15 信号。
 - **1.7.10**：配方自动生成再收紧——新增排除**水晶种子**（物品 id 含 `seed` 的一律跳过，例如水晶科技的水晶种子），工具判定除原版工具标签外再检查通用 `c:tools` 标签，模组工具也不会再被当成水晶。
 - **1.7.9**：贴图目录精简为每档只剩 `front` / `front_active`（侧面与顶面贴图已移除，六面统一使用正面图）；配方自动生成收紧——只接受**模组 id 带 ae/app/applied/mega 特征的 AE 生态物品**，并排除可放置方块与工具类物品，避免给无关物品乱配配方。

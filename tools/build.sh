@@ -10,7 +10,7 @@ JAVA=/usr/lib/jvm/java-17-openjdk-arm64
 FART=$G/caches/forge_gradle/maven_downloader/net/minecraftforge/ForgeAutoRenamingTool/1.0.2/ForgeAutoRenamingTool-1.0.2-all.jar
 FORGE=$G/caches/forge_gradle/minecraft_user_repo/net/minecraftforge/forge/1.20.1-47.2.0_mapped_official_1.20.1/forge-1.20.1-47.2.0_mapped_official_1.20.1.jar
 cd "$PROJ"
-CP="$FORGE:$(find $G/caches/modules-2 -name '*.jar' | tr '\n' ':')$(find /root/libs -maxdepth 1 -name '*.jar' | tr '\n' ':')"
+CP="$FORGE:$(find $G/caches/modules-2 -name '*.jar' | tr '\n' ':')$(find /root/libs -maxdepth 1 -name '*.jar' | tr '\n' ':')$(find /root/libs1201 -maxdepth 1 -name '*.jar' | tr '\n' ':')"
 rm -rf /tmp/mbuild/classes && mkdir -p /tmp/mbuild/classes
 find src/main/java -name '*.java' > /tmp/mbuild/srcs.txt
 echo "[1/3] javac ($(wc -l < /tmp/mbuild/srcs.txt) files)"
@@ -42,7 +42,7 @@ print("  dev entries",count,"->",out)
 PYEOF
 echo "[3/3] reobfuscate official -> srg (FART)"
 LIBS=""
-for j in /root/libs/*.jar $(find $G/caches/modules-2 -name '*.jar'); do LIBS="$LIBS --lib $j"; done
+for j in /root/libs/*.jar /root/libs1201/*.jar $(find $G/caches/modules-2 -name '*.jar'); do LIBS="$LIBS --lib $j"; done
 $JAVA/bin/java -jar $FART --input /tmp/mbuild/dev-$VER.jar --output build/libs/crystal_multiplier-$VER-mc1.20.1.jar --map build/reobfJar/mappings.tsrg --lib "$FORGE" $LIBS > /tmp/fart.log 2>&1
 grep "Can't Find Class" /tmp/fart.log || true
 python3 - "$VER" <<'PYEOF'
