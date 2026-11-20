@@ -1,7 +1,10 @@
 package cn.furina.crystalmultiplier.content;
 
 import cn.furina.crystalmultiplier.CrystalMultiplierMod;
+import cn.furina.crystalmultiplier.config.CrystalMultiplierConfig;
+import com.mojang.logging.LogUtils;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -25,6 +28,7 @@ import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.jetbrains.annotations.NotNull;
+import org.slf4j.Logger;
 
 /**
  * Generates the crystal multiplication recipes for crystals that live in optional addon mods.
@@ -50,10 +54,11 @@ public final class AutoCrystalRecipes extends SimplePreparableReloadListener<Voi
             new Candidate("extendedae_plus", "lattra_crystal", 340, 300),
             new Candidate("appflux", "redstone_crystal", 320, 280));
 
-    /** Same shape as the datapack recipes: 2 crystals out, 16 seeds per parallel lane. */
-    /** Numbers used for crystals that are discovered by scanning the item registry. */
-    private static final int DEFAULT_ENERGY_PER_TICK = 320;
-    private static final int DEFAULT_TICKS = 280;
+    private static final Logger LOGGER = LogUtils.getLogger();
+
+    // 生成配方的数值不再写死：能量/耗时来自 CrystalMultiplierConfig 的
+    // defaultCrystalEnergyPerTick / defaultCrystalTicks，单个物品可以用 recipeOverrides
+    // （"modid:item=energy:ticks"）覆盖，见 parseOverrides()。
 
     /** Mods whose "crystal" items are ore processing intermediates, not AE2 style crystals. */
     private static final Set<String> BLACKLISTED_NAMESPACES = Set.of("minecraft", "mekanism",
@@ -84,6 +89,11 @@ public final class AutoCrystalRecipes extends SimplePreparableReloadListener<Voi
 
     @Override
     protected void apply(Void unused, @NotNull ResourceManager resourceManager, @NotNull ProfilerFiller profiler) {
+        // 总开关：关掉之后一条自动配方都不注入（手写 json 的三条 + 数据包配方不受影响）。
+        if (CrystalMultiplierConfig.disableAutoRecipes()) {
+            LOGGER.debug("crystal_multiplier: disableAutoRecipes is on, skipping the generated crystal recipes");
+            return;
+        }
         Collection<Recipe<?>> existing = this.recipeManager.getRecipes();
         List<Recipe<?>> all = new ArrayList<>(existing.size() + CANDIDATES.size());
         all.addAll(existing);
@@ -96,6 +106,10 @@ public final class AutoCrystalRecipes extends SimplePreparableReloadListener<Voi
                 }
             }
         }
+        // 配置里每个物品的临时覆盖值（"modid:item=energy:ticks"），优先级最高。
+        Map<Item, int[]> overrides = parseOverrides();
+        int defaultEnergy = CrystalMultiplierConfig.defaultCrystalEnergyPerTick();
+        int defaultTicks = CrystalMultiplierConfig.defaultCrystalTicks();
         int added = 0;
         for (Candidate candidate : CANDIDATES) {
             if (!ModList.get().isLoaded(candidate.modId())) {
@@ -110,8 +124,12 @@ public final class AutoCrystalRecipes extends SimplePreparableReloadListener<Voi
             if (this.recipeManager.byKey(id).isPresent()) {
                 continue;
             }
+            // 优先级：recipeOverrides > 该附属自带的数值（与老 json 一致）> 全局默认值。
+            int[] override = overrides.get(item);
+            int energy = override != null ? override[0] : candidate.energyPerTick();
+            int ticks = override != null ? override[1] : candidate.ticks();
             all.add(new CrystalMultiplicationRecipe(id, Ingredient.of(item), new ItemStack(item, RESULT_COUNT),
-                    candidate.energyPerTick(), candidate.ticks(), CRYSTALS_PER_PARALLEL));
+                    energy, ticks, CRYSTALS_PER_PARALLEL));
             covered.add(item);
             added++;
         }
@@ -151,8 +169,11 @@ public final class AutoCrystalRecipes extends SimplePreparableReloadListener<Voi
             if (this.recipeManager.byKey(recipeId).isPresent()) {
                 continue;
             }
+            int[] override = overrides.get(item);
             all.add(new CrystalMultiplicationRecipe(recipeId, Ingredient.of(item),
-                    new ItemStack(item, RESULT_COUNT), DEFAULT_ENERGY_PER_TICK, DEFAULT_TICKS,
+                    new ItemStack(item, RESULT_COUNT),
+                    override != null ? override[0] : defaultEnergy,
+                    override != null ? override[1] : defaultTicks,
                     CRYSTALS_PER_PARALLEL));
             added++;
         }
@@ -164,6 +185,56 @@ public final class AutoCrystalRecipes extends SimplePreparableReloadListener<Voi
     @Override
     public @NotNull String getName() {
         return CrystalMultiplierMod.MODID + ":auto_crystal_recipes";
+    }
+
+    /**
+     * 解析 {@link CrystalMultiplierConfig#recipeOverrides()} 里的 {@code modid:item=energy:ticks} 行。
+     *
+     * <p>解析失败的条目一律忽略并打一行 warn（不会让整合包作者的一个笔误把整个数据包重载搞崩），
+     * 返回值按物品索引，value 是 {@code {energyPerTick, ticks}}。</p>
+     */
+    private static Map<Item, int[]> parseOverrides() {
+        List<String> raw = CrystalMultiplierConfig.recipeOverrides();
+        if (raw.isEmpty()) {
+            return Map.of();
+        }
+        Map<Item, int[]> parsed = new HashMap<>();
+        for (String entry : raw) {
+            if (entry == null || entry.isBlank()) {
+                continue;
+            }
+            int split = entry.indexOf('=');
+            if (split <= 0) {
+                LOGGER.warn("crystal_multiplier: ignoring malformed recipeOverrides entry '{}', expected 'modid:item=energy:ticks'", entry);
+                continue;
+            }
+            ResourceLocation itemId = ResourceLocation.tryParse(entry.substring(0, split).trim());
+            String[] numbers = entry.substring(split + 1).trim().split(":", -1);
+            if (itemId == null || numbers.length != 2) {
+                LOGGER.warn("crystal_multiplier: ignoring malformed recipeOverrides entry '{}', expected 'modid:item=energy:ticks'", entry);
+                continue;
+            }
+            int energy;
+            int ticks;
+            try {
+                energy = Integer.parseInt(numbers[0].trim());
+                ticks = Integer.parseInt(numbers[1].trim());
+            } catch (NumberFormatException e) {
+                LOGGER.warn("crystal_multiplier: ignoring recipeOverrides entry '{}', energy and ticks must be whole numbers", entry);
+                continue;
+            }
+            if (energy < 1 || ticks < 1) {
+                LOGGER.warn("crystal_multiplier: ignoring recipeOverrides entry '{}', energy and ticks must be >= 1", entry);
+                continue;
+            }
+            Item item = ForgeRegistries.ITEMS.getValue(itemId);
+            if (item == null || item == Items.AIR) {
+                LOGGER.warn("crystal_multiplier: ignoring recipeOverrides entry '{}', unknown item '{}'", entry, itemId);
+                continue;
+            }
+            parsed.put(item, new int[]{energy, ticks});
+        }
+        return parsed;
     }
 
     /** AE 生态判定：模组 id 里带 ae / app / applied / mega 之类特征才算水晶来源。 */

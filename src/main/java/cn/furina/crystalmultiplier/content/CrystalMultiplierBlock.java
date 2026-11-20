@@ -35,6 +35,26 @@ public class CrystalMultiplierBlock extends BlockTile<CrystalMultiplierBlockEnti
         return this.tier;
     }
 
+    /* ------------------------------------------------------------- comparator */
+
+    /**
+     * Comparator support. In 1.20.1 the vanilla hook lives on the block, not on the block entity:
+     * {@code BlockBehaviour#getAnalogOutputSignal(state, level, pos)} is what a comparator asks, and
+     * {@code hasAnalogOutputSignal} decides whether it is asked at all. Both are forwarded to
+     * {@link CrystalMultiplierBlockEntity#getAnalogOutputSignal()} (progress or seed fill * 15).
+     */
+    @Override
+    public boolean hasAnalogOutputSignal(BlockState state) {
+        return true;
+    }
+
+    @Override
+    public int getAnalogOutputSignal(BlockState state, Level level, BlockPos pos) {
+        return level.getBlockEntity(pos) instanceof CrystalMultiplierBlockEntity machine
+                ? machine.getAnalogOutputSignal()
+                : 0;
+    }
+
     @Override
     public void playerWillDestroy(Level level, BlockPos pos, BlockState state, Player player) {
         if (!level.isClientSide) {

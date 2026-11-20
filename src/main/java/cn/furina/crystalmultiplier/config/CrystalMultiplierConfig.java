@@ -1,5 +1,6 @@
 package cn.furina.crystalmultiplier.config;
 
+import java.util.List;
 import net.minecraftforge.common.ForgeConfigSpec;
 
 /**
@@ -31,12 +32,26 @@ public final class CrystalMultiplierConfig {
     public static final ForgeConfigSpec.IntValue UPGRADE_CARDS_PER_STEP;
     public static final ForgeConfigSpec.BooleanValue EJECT_EVERY_TICK;
     public static final ForgeConfigSpec.BooleanValue GLOBAL_EJECT_EVERY_TICK;
+    public static final ForgeConfigSpec.IntValue DEFAULT_CRYSTAL_ENERGY_PER_TICK;
+    public static final ForgeConfigSpec.IntValue DEFAULT_CRYSTAL_TICKS;
+    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> RECIPE_OVERRIDES;
+    public static final ForgeConfigSpec.BooleanValue DISABLE_AUTO_RECIPES;
+    public static final ForgeConfigSpec.IntValue CONFIG_VERSION;
 
     static {
         ForgeConfigSpec.Builder builder = new ForgeConfigSpec.Builder();
         builder.comment("Crystal Multiplier: parallelism, seed slot, speed and output settings")
                 .translation(LANG_PREFIX)
                 .push("machine");
+
+        CONFIG_VERSION = builder
+                .comment("Layout version of this config file, used for future migrations only.",
+                        "Whenever an option is renamed, moved or removed, the new mod version can",
+                        "compare this value with the version it expects and rewrite the file on",
+                        "disk instead of silently resetting the user's numbers.",
+                        "Do not edit this by hand: the default 1 matches the current layout.")
+                .translation(LANG_PREFIX + ".configVersion")
+                .defineInRange("configVersion", 1, 1, 1000);
 
         CRYSTALS_PER_PARALLEL = builder
                 .comment("How many crystals of one kind must sit in the seed slot to form one parallel lane.",
@@ -108,6 +123,43 @@ public final class CrystalMultiplierConfig {
                 .translation(LANG_PREFIX + ".upgradeCardsPerStep")
                 .defineInRange("upgradeCardsPerStep", 8, 1, 512);
 
+        DISABLE_AUTO_RECIPES = builder
+                .comment("Turn off the recipes this mod generates in code for optional addon crystals",
+                        "completely: nothing is injected into the recipe manager any more.",
+                        "The three hand written recipes (certus quartz, charged certus quartz, fluix)",
+                        "keep working, and so does every json recipe a datapack provides.",
+                        "Useful for packs that want to hand pick which crystals the machine accepts.",
+                        "Default false.")
+                .translation(LANG_PREFIX + ".disableAutoRecipes")
+                .define("disableAutoRecipes", false);
+
+        DEFAULT_CRYSTAL_ENERGY_PER_TICK = builder
+                .comment("Energy per tick of the recipes this mod generates in code, i.e. the ones for",
+                        "crystals that are discovered by scanning the item registry (optional AE2",
+                        "addons such as appflux / extendedae). Hand written datapack recipes keep",
+                        "their own json values.",
+                        "A single item can be given its own numbers through recipeOverrides.")
+                .translation(LANG_PREFIX + ".defaultCrystalEnergyPerTick")
+                .defineInRange("defaultCrystalEnergyPerTick", 320, 1, 1_000_000);
+
+        DEFAULT_CRYSTAL_TICKS = builder
+                .comment("Ticks one operation of such a generated recipe needs, before the tier speed",
+                        "multiplier and baseSpeedMultiplier are applied.")
+                .translation(LANG_PREFIX + ".defaultCrystalTicks")
+                .defineInRange("defaultCrystalTicks", 280, 1, 1_000_000);
+
+        RECIPE_OVERRIDES = builder
+                .comment("Per item override of the generated recipes, one entry per line.",
+                        "Format: \"modid:item=energy:ticks\", energy and ticks must be >= 1.",
+                        "Example: \"appflux:redstone_crystal=400:200\".",
+                        "Overrides win over the global defaults above and over the numbers the",
+                        "individual addon crystals carry. Entries that cannot be parsed are",
+                        "ignored and logged as a warning. Pack authors can also simply ship their",
+                        "own json recipe under data/crystal_multiplier/recipes/crystal_multiplication/,",
+                        "which always wins over a generated one.")
+                .translation(LANG_PREFIX + ".recipeOverrides")
+                .defineList("recipeOverrides", List.<String>of(), o -> o instanceof String);
+
         builder.pop();
         SPEC = builder.build();
     }
@@ -175,5 +227,38 @@ public final class CrystalMultiplierConfig {
     /** The same per tick ejection for every Mekanism machine. Off by default. */
     public static boolean globalEjectEveryTick() {
         return boolOr(GLOBAL_EJECT_EVERY_TICK, false);
+    }
+
+    /** True when the machine should not generate any recipe in code at all. Off by default. */
+    public static boolean disableAutoRecipes() {
+        return boolOr(DISABLE_AUTO_RECIPES, false);
+    }
+
+    /** Layout version of the config file, for future migrations. Defaults to 1. */
+    public static int configVersion() {
+        return intOr(CONFIG_VERSION, 1);
+    }
+
+    /** Energy per tick of the recipes generated in code (registry scan fallback). */
+    public static int defaultCrystalEnergyPerTick() {
+        return intOr(DEFAULT_CRYSTAL_ENERGY_PER_TICK, 320);
+    }
+
+    /** Ticks of one operation of the recipes generated in code. */
+    public static int defaultCrystalTicks() {
+        return intOr(DEFAULT_CRYSTAL_TICKS, 280);
+    }
+
+    /**
+     * Raw {@code modid:item=energy:ticks} override lines. Never null: an unloaded config yields an
+     * empty list, so the recipe generator simply falls back to the defaults.
+     */
+    public static List<String> recipeOverrides() {
+        try {
+            List<? extends String> value = RECIPE_OVERRIDES.get();
+            return value == null ? List.of() : List.copyOf(value);
+        } catch (IllegalStateException e) {
+            return List.of();
+        }
     }
 }

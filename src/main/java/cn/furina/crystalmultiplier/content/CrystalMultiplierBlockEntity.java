@@ -34,10 +34,16 @@ import mekanism.common.tile.interfaces.ISideConfiguration;
 import mekanism.common.upgrade.IUpgradeData;
 import mekanism.common.util.MekanismUtils;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
+import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
@@ -57,6 +63,21 @@ public class CrystalMultiplierBlockEntity extends TileEntityMekanism implements 
     /** Kept for the menu/screen code: upper bound for a single simulated extraction. */
     public static final int MAX_STACK_COUNT = CrystalSlot.MAX_VISIBLE;
 
+    /* ------------------------------------------------- "a batch just finished" feedback */
+
+    /** How many particles one finished batch puffs out of the front face. */
+    private static final int EJECT_PARTICLE_COUNT = 6;
+    /** Random spread of those particles around the front face, in blocks. */
+    private static final double EJECT_PARTICLE_SPREAD = 0.3D;
+    /** Extra velocity handed to every particle (electric sparks look better almost still). */
+    private static final double EJECT_PARTICLE_SPEED = 0.02D;
+    /** Minimum number of ticks between two eject sounds: a 4 tick batch would otherwise spam audio. */
+    private static final int EJECT_SOUND_COOLDOWN_TICKS = 40;
+    /** Chime volume, quiet on purpose - this plays next to the player's base, not in their face. */
+    private static final float EJECT_SOUND_VOLUME = 0.4F;
+    /** Chime pitch; a bit higher than vanilla so it reads as "small pickup", not as a block. */
+    private static final float EJECT_SOUND_PITCH = 1.4F;
+
     /** Seed slot, followed by the output slots. Never initialise this here: super() calls getInitialInventory first. */
     private CrystalSlot seedSlot;
     private List<CrystalSlot> outputSlots;
@@ -72,6 +93,10 @@ public class CrystalMultiplierBlockEntity extends TileEntityMekanism implements 
     private int parallelism;
     private int itemsPerBatch;
     private boolean seedValid;
+    /** Game time of the last eject chime, so the sound keeps a minimum distance (not serialised). */
+    private long lastEjectSoundTick = -EJECT_SOUND_COOLDOWN_TICKS;
+    /** Last comparator value we announced, -1 means "nothing announced yet". Not serialised. */
+    private int lastComparatorSignal = -1;
 
     public CrystalMultiplierBlockEntity(IBlockProvider blockProvider, BlockPos pos, BlockState state) {
         super(blockProvider, pos, state);
@@ -236,6 +261,31 @@ public class CrystalMultiplierBlockEntity extends TileEntityMekanism implements 
         return Math.max(1, per);
     }
 
+    /* ------------------------------------------------------------- comparator */
+
+    /**
+     * Analog (comparator) output of the machine, 0-15.
+     *
+     * <p>Formula: the larger of the current operation progress and the seed slot fill ratio, times
+     * 15. Both are useful to automate on: progress tells a redstone circuit "the machine is busy",
+     * the seed ratio tells it "the machine is running out of seed crystals", and taking the larger
+     * of the two keeps the signal alive while one of them is near zero. A full seed slot therefore
+     * always reads 15 even when the machine is idle, and an empty one still reads 15 while a batch
+     * is nearly done.</p>
+     *
+     * <p>1.20.1 has no comparator hook on a BlockEntity - the vanilla chain starts at
+     * {@code BlockBehaviour#getAnalogOutputSignal} - so the number is produced here and forwarded
+     * by {@link CrystalMultiplierBlock}. {@link #notifyComparatorChange()} is called from the server
+     * tick whenever the value actually changes.</p>
+     */
+    public int getAnalogOutputSignal() {
+        double progressRatio = this.getScaledProgress();
+        int seedCount = this.seedSlot == null ? 0 : this.seedSlot.getStoredCount();
+        double seedRatio = (double) seedCount / (double) Math.max(1, this.getSeedCapacity());
+        double ratio = Math.max(progressRatio, seedRatio);
+        return Mth.clamp((int) Math.round(ratio * 15.0D), 0, 15);
+    }
+
     @Override
     protected void onUpdateServer() {
         super.onUpdateServer();
@@ -319,6 +369,12 @@ public class CrystalMultiplierBlockEntity extends TileEntityMekanism implements 
             this.setActive(working);
             this.markForSave();
         }
+        // 比较器：只有数值真的变了才去通知周围方块，省掉每 tick 的邻居更新。
+        int comparatorSignal = this.getAnalogOutputSignal();
+        if (comparatorSignal != this.lastComparatorSignal) {
+            this.lastComparatorSignal = comparatorSignal;
+            this.notifyComparatorChange();
+        }
         // TileEntityMekanism only ticks the frequency and upgrade components, so the ejector has to be
         // ticked explicitly, exactly like TileEntityConfigurableMachine does for Mekanism machines.
         // It runs last on purpose: pushResult above already put this tick's products into the output
@@ -368,6 +424,43 @@ public class CrystalMultiplierBlockEntity extends TileEntityMekanism implements 
             remaining = slot.insertInternal(result.copyWithCount(remaining), Action.EXECUTE).getCount();
         }
         this.markForSave();
+        if (remaining < amount) {
+            // 真的推进去东西了才放特效，避免产物槽塞满时每 tick 空放粒子。
+            this.playEjectEffects();
+        }
+    }
+
+    /**
+     * Feedback for a finished batch: a small puff of particles in front of the machine plus a quiet
+     * chime at most once every {@link #EJECT_SOUND_COOLDOWN_TICKS} ticks.
+     *
+     * <p>Server side only: {@code ServerLevel#sendParticles} pushes the particles to every tracking
+     * client (1.20.1 has no {@code Level#sendParticles}, that method only exists on ServerLevel), so
+     * the client never has to run this logic itself, and a machine that is not being looked at costs
+     * no rendering work.</p>
+     */
+    private void playEjectEffects() {
+        if (!(this.level instanceof ServerLevel serverLevel)) {
+            return;
+        }
+        Direction facing = this.getDirection();
+        if (facing == null) {
+            facing = Direction.NORTH;
+        }
+        // 正面（产物弹出的那一面）的中心点。
+        BlockPos front = this.worldPosition.relative(facing);
+        double x = front.getX() + 0.5D;
+        double y = front.getY() + 0.5D;
+        double z = front.getZ() + 0.5D;
+        serverLevel.sendParticles(ParticleTypes.ELECTRIC_SPARK, x, y, z, EJECT_PARTICLE_COUNT,
+                EJECT_PARTICLE_SPREAD, EJECT_PARTICLE_SPREAD, EJECT_PARTICLE_SPREAD, EJECT_PARTICLE_SPEED);
+
+        long now = serverLevel.getGameTime();
+        if (now - this.lastEjectSoundTick >= EJECT_SOUND_COOLDOWN_TICKS) {
+            this.lastEjectSoundTick = now;
+            serverLevel.playSound(null, front, SoundEvents.AMETHYST_BLOCK_CHIME, SoundSource.BLOCKS,
+                    EJECT_SOUND_VOLUME, EJECT_SOUND_PITCH);
+        }
     }
 
     /* ---------------------------------------------------------------- syncing */
