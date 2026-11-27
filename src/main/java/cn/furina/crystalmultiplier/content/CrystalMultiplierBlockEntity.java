@@ -19,6 +19,7 @@ import mekanism.common.capabilities.holder.energy.IEnergyContainerHolder;
 import mekanism.common.capabilities.holder.slot.IInventorySlotHolder;
 import mekanism.common.capabilities.holder.slot.InventorySlotHelper;
 import mekanism.common.inventory.container.MekanismContainer;
+import mekanism.common.inventory.container.sync.SyncableBoolean;
 import mekanism.common.inventory.container.sync.SyncableDouble;
 import mekanism.common.inventory.container.sync.SyncableInt;
 import mekanism.common.lib.transmitter.TransmissionType;
@@ -86,6 +87,8 @@ public class CrystalMultiplierBlockEntity extends TileEntityMekanism implements 
     private int parallelism;
     private int itemsPerBatch;
     private boolean seedValid;
+    /** Per-machine switch: hand every finished batch straight to an adjacent ME network. */
+    private boolean aeOutput;
     /** Game time of the last eject chime, so the sound keeps a minimum distance (not serialised). */
     private long lastEjectSoundTick = -EJECT_SOUND_COOLDOWN_TICKS;
     /** Last comparator value we announced, -1 means "nothing announced yet". Not serialised. */
@@ -106,6 +109,19 @@ public class CrystalMultiplierBlockEntity extends TileEntityMekanism implements 
             }
         }
         throw new IllegalStateException("Unknown crystal multiplier block: " + block);
+    }
+
+    /** Whether finished batches go into an adjacent ME network instead of the output slots. */
+    public boolean isAeOutputEnabled() {
+        return this.aeOutput;
+    }
+
+    /** Toggled from the machine GUI; synced to the client through the container trackers. */
+    public void setAeOutput(boolean enabled) {
+        if (this.aeOutput != enabled) {
+            this.aeOutput = enabled;
+            this.markForSave();
+        }
     }
 
     public CrystalTier getTier() {
@@ -401,7 +417,12 @@ public class CrystalMultiplierBlockEntity extends TileEntityMekanism implements 
         if (result.isEmpty() || amount <= 0) {
             return false;
         }
-        int remaining = amount;
+        // With the AE output switch on, a connected network counts as free space, so the machine
+        // keeps running even while every output slot is full.
+        int remaining = amount - Ae2Compat.insert(this, result, amount, true);
+        if (remaining <= 0) {
+            return true;
+        }
         for (CrystalSlot slot : this.outputSlots) {
             if (remaining <= 0) {
                 break;
@@ -412,7 +433,8 @@ public class CrystalMultiplierBlockEntity extends TileEntityMekanism implements 
     }
 
     private void pushResult(ItemStack result, int amount) {
-        int remaining = amount;
+        // Products never touch the output slots when AE output is on and a network is reachable.
+        int remaining = amount - Ae2Compat.insert(this, result, amount, false);
         for (CrystalSlot slot : this.outputSlots) {
             if (remaining <= 0) {
                 break;
@@ -421,7 +443,7 @@ public class CrystalMultiplierBlockEntity extends TileEntityMekanism implements 
         }
         this.markForSave();
         if (remaining < amount) {
-            // 真的推进去东西了才响一声，避免产物槽塞满时每 tick 空放音效。
+            // 产物真的离开机器才响一声：AE 直连和落进产物槽都算。
             this.playEjectChime();
         }
     }
@@ -490,6 +512,7 @@ public class CrystalMultiplierBlockEntity extends TileEntityMekanism implements 
         tag.putInt("CrystalParallelism", this.parallelism);
         tag.putInt("CrystalItemsPerBatch", this.itemsPerBatch);
         tag.putBoolean("CrystalSeedValid", this.seedValid);
+        tag.putBoolean("CrystalAeOutput", this.aeOutput);
         tag.putInt("ControlType", this.getControlType().ordinal());
         tag.putBoolean("Active", this.getActive());
         return new CrystalUpgradeData(tag);
@@ -508,6 +531,7 @@ public class CrystalMultiplierBlockEntity extends TileEntityMekanism implements 
         this.parallelism = tag.getInt("CrystalParallelism");
         this.itemsPerBatch = tag.getInt("CrystalItemsPerBatch");
         this.seedValid = tag.getBoolean("CrystalSeedValid");
+        this.aeOutput = tag.getBoolean("CrystalAeOutput");
         if (tag.contains("ControlType", Tag.TAG_INT)) {
             this.setControlType(IRedstoneControl.RedstoneControl.byIndexStatic(tag.getInt("ControlType")));
         }
@@ -537,6 +561,7 @@ public class CrystalMultiplierBlockEntity extends TileEntityMekanism implements 
         container.track(SyncableInt.create(() -> this.energyPerTick, value -> this.energyPerTick = value));
         container.track(SyncableInt.create(() -> this.parallelism, value -> this.parallelism = value));
         container.track(SyncableInt.create(() -> this.itemsPerBatch, value -> this.itemsPerBatch = value));
+        container.track(SyncableBoolean.create(() -> this.aeOutput, value -> this.aeOutput = value));
     }
 
     /* ----------------------------------------------------------------- saving */
@@ -550,6 +575,7 @@ public class CrystalMultiplierBlockEntity extends TileEntityMekanism implements 
         tag.putInt("CrystalParallelism", this.parallelism);
         tag.putInt("CrystalItemsPerBatch", this.itemsPerBatch);
         tag.putBoolean("CrystalSeedValid", this.seedValid);
+        tag.putBoolean("CrystalAeOutput", this.aeOutput);
     }
 
     @Override
@@ -561,5 +587,6 @@ public class CrystalMultiplierBlockEntity extends TileEntityMekanism implements 
         this.parallelism = tag.getInt("CrystalParallelism");
         this.itemsPerBatch = tag.getInt("CrystalItemsPerBatch");
         this.seedValid = tag.getBoolean("CrystalSeedValid");
+        this.aeOutput = tag.getBoolean("CrystalAeOutput");
     }
 }

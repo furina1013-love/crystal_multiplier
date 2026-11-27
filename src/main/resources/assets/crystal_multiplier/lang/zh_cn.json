@@ -26,8 +26,6 @@
   "crystal_multiplier.configuration.machine.recipeOverrides.tooltip": "每行一条，格式 modid:item=energy:ticks，例如 appflux:redstone_crystal=400:200。写法有误的行会被忽略并在日志里提示。",
   "crystal_multiplier.configuration.machine.ejectEveryTick": "本机每 tick 弹出产物",
   "crystal_multiplier.configuration.machine.ejectEveryTick.tooltip": "开启时水晶增殖机的产物槽每 tick 都往相邻容器/管道弹一次（Mekanism 默认 10 tick 一次）。不影响生产速度。默认开启。",
-  "crystal_multiplier.configuration.machine.aeOutput": "产物直接回 AE 网络",
-  "crystal_multiplier.configuration.machine.aeOutput.tooltip": "开启后机器每 tick 先把产物槽里的东西直接塞进贴着它的 AE2 线缆/接口所在网络（参考资源蜜蜂：创世的产物回网），网络塞不下的才留给 Mekanism 的弹出逻辑。关掉后只走机器的侧面配置。默认开启。",
   "crystal_multiplier.configuration.machine.globalEjectEveryTick": "全局：所有 Mek 机器每 tick 弹出产物",
   "crystal_multiplier.configuration.machine.globalEjectEveryTick.tooltip": "开启后所有 Mekanism 机器（本体机器、工厂、附属机械）的产物槽都每 tick 弹出一次，而不是默认的 10 tick。不影响生产速度。默认关闭。",
   "crystal_multiplier.configuration.machine.upgradeCardsPerStep": "多少张卡等于一个倍率台阶",
@@ -54,5 +52,8 @@
   "tier.crystal_multiplier.elite": "精英",
   "tier.crystal_multiplier.ultimate": "终极",
   "jade.crystal_multiplier.info": "档位: %s   并行: %s",
-  "jade.crystal_multiplier.status": "运行: %s   进度: %s%%"
+  "jade.crystal_multiplier.status": "运行: %s   进度: %s%%",
+  "crystal_multiplier.gui.ae_output": "AE 输出：%s",
+  "crystal_multiplier.gui.ae_output.on": "AE 输出：开（产物直连 ME 网络，不进产物槽）",
+  "crystal_multiplier.gui.ae_output.off": "AE 输出：关（产物进入产物槽）"
 }

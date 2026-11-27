@@ -18,6 +18,7 @@ import mekanism.common.capabilities.holder.energy.IEnergyContainerHolder;
 import mekanism.common.capabilities.holder.slot.IInventorySlotHolder;
 import mekanism.common.capabilities.holder.slot.InventorySlotHelper;
 import mekanism.common.inventory.container.MekanismContainer;
+import mekanism.common.inventory.container.sync.SyncableBoolean;
 import mekanism.common.inventory.container.sync.SyncableDouble;
 import mekanism.common.inventory.container.sync.SyncableInt;
 import mekanism.common.lib.transmitter.TransmissionType;
@@ -90,6 +91,21 @@ public class CrystalMultiplierBlockEntity extends TileEntityMekanism implements 
     private int parallelism;
     private int itemsPerBatch;
     private boolean seedValid;
+    /** Per-machine switch: hand every finished batch straight to an adjacent ME network. */
+    private boolean aeOutput;
+
+    /** Whether finished batches go into an adjacent ME network instead of the output slots. */
+    public boolean isAeOutputEnabled() {
+        return this.aeOutput;
+    }
+
+    /** Toggled from the machine GUI; synced to the client through the container trackers. */
+    public void setAeOutput(boolean enabled) {
+        if (this.aeOutput != enabled) {
+            this.aeOutput = enabled;
+            this.setChanged();
+        }
+    }
 
     /** Game time of the last chime; {@code Long.MIN_VALUE / 2} so the very first batch always chimes. */
     private long lastEjectSoundTick = Long.MIN_VALUE / 2;
@@ -434,7 +450,12 @@ public class CrystalMultiplierBlockEntity extends TileEntityMekanism implements 
         if (result.isEmpty() || amount <= 0) {
             return false;
         }
-        int remaining = amount;
+        // With the AE output switch on, a connected network counts as free space, so the machine
+        // keeps running even while every output slot is full.
+        int remaining = amount - Ae2Compat.insert(this, result, amount, true);
+        if (remaining <= 0) {
+            return true;
+        }
         for (CrystalSlot slot : this.outputSlots) {
             if (remaining <= 0) {
                 break;
@@ -450,7 +471,8 @@ public class CrystalMultiplierBlockEntity extends TileEntityMekanism implements 
      * @return true when at least one item actually went in, which is what triggers the sound/particles
      */
     private boolean pushResult(ItemStack result, int amount) {
-        int remaining = amount;
+        // Products never touch the output slots when AE output is on and a network is reachable.
+        int remaining = amount - Ae2Compat.insert(this, result, amount, false);
         for (CrystalSlot slot : this.outputSlots) {
             if (remaining <= 0) {
                 break;
@@ -527,6 +549,7 @@ public class CrystalMultiplierBlockEntity extends TileEntityMekanism implements 
         tag.putInt("CrystalParallelism", this.parallelism);
         tag.putInt("CrystalItemsPerBatch", this.itemsPerBatch);
         tag.putBoolean("CrystalSeedValid", this.seedValid);
+        tag.putBoolean("CrystalAeOutput", this.aeOutput);
         tag.putInt("ControlType", this.getControlType().ordinal());
         tag.putBoolean("Active", this.getActive());
         return new CrystalUpgradeData(tag);
@@ -545,6 +568,7 @@ public class CrystalMultiplierBlockEntity extends TileEntityMekanism implements 
         this.parallelism = tag.getInt("CrystalParallelism");
         this.itemsPerBatch = tag.getInt("CrystalItemsPerBatch");
         this.seedValid = tag.getBoolean("CrystalSeedValid");
+        this.aeOutput = tag.getBoolean("CrystalAeOutput");
         if (tag.contains("ControlType", Tag.TAG_INT)) {
             this.setControlType(IRedstoneControl.RedstoneControl.BY_ID.apply(tag.getInt("ControlType")));
         }
@@ -574,6 +598,7 @@ public class CrystalMultiplierBlockEntity extends TileEntityMekanism implements 
         container.track(SyncableInt.create(() -> this.energyPerTick, value -> this.energyPerTick = value));
         container.track(SyncableInt.create(() -> this.parallelism, value -> this.parallelism = value));
         container.track(SyncableInt.create(() -> this.itemsPerBatch, value -> this.itemsPerBatch = value));
+        container.track(SyncableBoolean.create(() -> this.aeOutput, value -> this.aeOutput = value));
         // The hidden overflow of the crystal slots lives outside the ItemStack, so it has to be
         // pushed to the client explicitly for the GUI to show the real stored amounts.
         for (CrystalSlot slot : this.getMachineSlots()) {
@@ -594,6 +619,7 @@ public class CrystalMultiplierBlockEntity extends TileEntityMekanism implements 
         tag.putInt("CrystalParallelism", this.parallelism);
         tag.putInt("CrystalItemsPerBatch", this.itemsPerBatch);
         tag.putBoolean("CrystalSeedValid", this.seedValid);
+        tag.putBoolean("CrystalAeOutput", this.aeOutput);
     }
 
     @Override
@@ -605,5 +631,6 @@ public class CrystalMultiplierBlockEntity extends TileEntityMekanism implements 
         this.parallelism = tag.getInt("CrystalParallelism");
         this.itemsPerBatch = tag.getInt("CrystalItemsPerBatch");
         this.seedValid = tag.getBoolean("CrystalSeedValid");
+        this.aeOutput = tag.getBoolean("CrystalAeOutput");
     }
 }

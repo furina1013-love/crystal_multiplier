@@ -88,6 +88,15 @@ public final class AutoCrystalRecipes extends SimplePreparableReloadListener<Voi
     /** Same shape as the data pack recipes: 2 crystals out. */
     private static final int RESULT_COUNT = 2;
 
+    /** Mod whose crystal catalyser recipes are mirrored (AE2 Lightning Tech). */
+    private static final String CATALYZER_MODID = "ae2lt";
+
+    /** Folder those recipes live in. */
+    private static final String CATALYZER_RECIPE_DIR = "recipes/crystal_catalyzer";
+
+    /** One second per batch, the catalyser's minimum processing time. */
+    private static final int CATALYZER_TICKS = 20;
+
     private final RecipeManager recipeManager;
 
     public AutoCrystalRecipes(RecipeManager recipeManager) {
@@ -120,6 +129,8 @@ public final class AutoCrystalRecipes extends SimplePreparableReloadListener<Voi
         }
         // Resolved once per reload, so editing the config + /reload is enough to see a new value.
         Map<ResourceLocation, Numbers> overrides = parseOverrides();
+        // 闪电科技（AE2LT）的水晶催化器配方：能量/时间/产量按它的数值来。
+        Map<ResourceLocation, int[]> catalyzer = readCatalyzerRecipes(resourceManager);
         Numbers defaults = new Numbers(CrystalMultiplierConfig.defaultCrystalEnergyPerTick(),
                 CrystalMultiplierConfig.defaultCrystalTicks());
         int crystalsPerParallel = Math.max(1, CrystalMultiplierConfig.crystalsPerParallel());
@@ -173,10 +184,6 @@ public final class AutoCrystalRecipes extends SimplePreparableReloadListener<Voi
             if (BLACKLISTED_NAMESPACES.contains(namespace) || !ModList.get().isLoaded(namespace)) {
                 continue;
             }
-            // 只兼容 AE 生态（模组 id 带 ae / app / applied / mega 这些特征）
-            if (!isAeAddon(namespace)) {
-                continue;
-            }
             Item item = entry.getValue();
             // 可放置的方块物品不要（水晶应该是纯物品）
             if (item instanceof BlockItem) {
@@ -194,15 +201,80 @@ public final class AutoCrystalRecipes extends SimplePreparableReloadListener<Voi
             if (this.recipeManager.byKey(recipeId).isPresent()) {
                 continue;
             }
-            Numbers numbers = overrides.getOrDefault(itemId, defaults);
+            int[] mirrored = catalyzer.get(itemId);
+            Numbers numbers = overrides.getOrDefault(itemId,
+                    mirrored != null ? new Numbers(mirrored[0], mirrored[1]) : defaults);
+            int resultCount = mirrored != null ? mirrored[2] : RESULT_COUNT;
             all.add(new RecipeHolder<>(recipeId, new CrystalMultiplicationRecipe(Ingredient.of(item),
-                    new ItemStack(item, RESULT_COUNT), numbers.energyPerTick(), numbers.ticks(),
+                    new ItemStack(item, resultCount), numbers.energyPerTick(), numbers.ticks(),
+                    crystalsPerParallel)));
+            added++;
+        }
+        // 闪电科技里名字不带 crystal 的产物（数据包自定义的水晶之类）也补上。
+        for (Map.Entry<ResourceLocation, int[]> entry : catalyzer.entrySet()) {
+            Item item = BuiltInRegistries.ITEM.getOptional(entry.getKey()).orElse(null);
+            if (item == null || item == Items.AIR || !covered.add(item)) {
+                continue;
+            }
+            ResourceLocation recipeId = ResourceLocation.fromNamespaceAndPath(CrystalMultiplierMod.MODID,
+                    "crystal_multiplication/auto_" + entry.getKey().getNamespace() + "_" + entry.getKey().getPath());
+            if (this.recipeManager.byKey(recipeId).isPresent()) {
+                continue;
+            }
+            int[] mirrored = entry.getValue();
+            Numbers numbers = overrides.getOrDefault(entry.getKey(), new Numbers(mirrored[0], mirrored[1]));
+            all.add(new RecipeHolder<>(recipeId, new CrystalMultiplicationRecipe(Ingredient.of(item),
+                    new ItemStack(item, mirrored[2]), numbers.energyPerTick(), numbers.ticks(),
                     crystalsPerParallel)));
             added++;
         }
         if (added > 0) {
             this.recipeManager.replaceRecipes(all);
         }
+    }
+
+
+    /**
+     * Reads the crystal catalyser recipes of "AE2 Lightning Tech" ({@code ae2lt}) and turns them into
+     * numbers this machine can use, so the crystals that mod adds cost the same here as they do there.
+     *
+     * <p>Their machine takes a crystal block as a catalyst (never consumed), a fluid, FE and one bolt
+     * of lightning, and produces the matching crystal in one second. This machine has no fluid and no
+     * lightning, so only the FE part of the cost is carried over: one second per batch and
+     * {@code energyPerCycle / 20} FE per tick. Recipes from the {@code dust/} folder are skipped.</p>
+     *
+     * @return output item id -> {@code {energyPerTick, ticks, amount}}
+     */
+    private static Map<ResourceLocation, int[]> readCatalyzerRecipes(ResourceManager resourceManager) {
+        if (!ModList.get().isLoaded(CATALYZER_MODID)) {
+            return Map.of();
+        }
+        Map<ResourceLocation, int[]> result = new HashMap<>();
+        Map<ResourceLocation, ?> files = resourceManager.listResources(CATALYZER_RECIPE_DIR,
+                path -> path.getPath().endsWith(".json"));
+        for (ResourceLocation file : files.keySet()) {
+            if (file.getPath().contains("/dust/")) {
+                continue;
+            }
+            try (var reader = resourceManager.getResource(file).orElseThrow().openAsReader()) {
+                com.google.gson.JsonObject root =
+                        com.google.gson.JsonParser.parseReader(reader).getAsJsonObject();
+                if (!root.has("output")) {
+                    continue;
+                }
+                com.google.gson.JsonObject output = root.getAsJsonObject("output");
+                ResourceLocation outputId = ResourceLocation.tryParse(output.get("id").getAsString());
+                if (outputId == null || result.containsKey(outputId)) {
+                    continue;
+                }
+                int count = output.has("count") ? Math.max(1, output.get("count").getAsInt()) : 1;
+                int energyPerCycle = root.has("energyPerCycle") ? root.get("energyPerCycle").getAsInt() : 100_000;
+                result.put(outputId, new int[]{Math.max(1, energyPerCycle / CATALYZER_TICKS), CATALYZER_TICKS, count});
+            } catch (RuntimeException | java.io.IOException e) {
+                LOGGER.debug("Skipping unreadable catalyser recipe {}", file, e);
+            }
+        }
+        return result;
     }
 
     /** One parsed {@code recipeOverrides} line: which item and the two numbers it should use. */
@@ -262,12 +334,6 @@ public final class AutoCrystalRecipes extends SimplePreparableReloadListener<Voi
     @Override
     public String getName() {
         return CrystalMultiplierMod.MODID + ":auto_crystal_recipes";
-    }
-
-    /** AE 生态判定：模组 id 里带 ae / app / applied / mega 之类特征才算水晶来源。 */
-    private static boolean isAeAddon(String namespace) {
-        return namespace.contains("ae") || namespace.startsWith("app")
-                || namespace.contains("applied") || namespace.contains("mega");
     }
 
     /** 工具类物品（镐斧锹锄剑/剪刀之类）不算水晶。 */

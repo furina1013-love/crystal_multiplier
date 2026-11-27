@@ -21,8 +21,24 @@ import net.minecraft.world.item.ItemStack;
  */
 public class CrystalMultiplierMenu extends MekanismTileContainer<CrystalMultiplierBlockEntity> {
 
+    /** Button id of the "AE output" switch in the side configuration window. */
+    public static final int BUTTON_TOGGLE_AE_OUTPUT = 1;
+
     public CrystalMultiplierMenu(int id, Inventory inventory, CrystalMultiplierBlockEntity tile) {
         super(CrystalMultiplierMod.MULTIPLIER_CONTAINER, id, inventory, tile);
+    }
+
+    /**
+     * Server side handler for the GUI buttons. The AE switch sends the vanilla container button
+     * packet, so no custom network channel is needed for it.
+     */
+    @Override
+    public boolean clickMenuButton(Player player, int id) {
+        if (id == BUTTON_TOGGLE_AE_OUTPUT) {
+            this.tile.setAeOutput(!this.tile.isAeOutputEnabled());
+            return true;
+        }
+        return super.clickMenuButton(player, id);
     }
 
     public List<CrystalSlot> getMachineSlots() {

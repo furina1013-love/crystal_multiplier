@@ -51,6 +51,12 @@ public final class RandomSideTextures {
     /** The front face in model space; the blockstate rotates the whole model around it. */
     private static final Direction FRONT = Direction.NORTH;
 
+    /**
+     * Version of the saved choice. 1 = the old raw file scan (which could pick textures no model
+     * uses), 2 = textures taken from crystal block models. An older file is re-picked once.
+     */
+    private static final int PICK_VERSION = 2;
+
     /** The five faces that get a random crystal texture, in a stable order. */
     private static final List<Direction> SIDES = List.of(Direction.UP, Direction.DOWN, Direction.EAST,
             Direction.WEST, Direction.SOUTH);
@@ -108,11 +114,15 @@ public final class RandomSideTextures {
         try {
             String json = Files.readString(file, StandardCharsets.UTF_8);
             JsonObject root = JsonParser.parseString(json).getAsJsonObject();
+            if (!root.has("version") || root.get("version").getAsInt() < PICK_VERSION) {
+                // Old choice made from raw file names; pick again with the model based source.
+                return result;
+            }
             for (Direction side : SIDES) {
                 if (root.has(side.getSerializedName())) {
                     ResourceLocation id = ResourceLocation.tryParse(root.get(side.getSerializedName()).getAsString());
                     if (id != null) {
-                        result.put(side, id);
+                        result.put(side, atlasId(id));
                     }
                 }
             }
@@ -124,6 +134,7 @@ public final class RandomSideTextures {
 
     private static void writeChoice(Map<Direction, ResourceLocation> picks) {
         JsonObject root = new JsonObject();
+        root.addProperty("version", PICK_VERSION);
         for (Direction side : SIDES) {
             ResourceLocation id = picks.get(side);
             if (id != null) {
@@ -139,39 +150,107 @@ public final class RandomSideTextures {
         }
     }
 
-    /** Picks five distinct crystal block textures; repeats one if fewer than five exist. */
+    /**
+     * Picks five distinct crystal-block faces; repeats one only when fewer than five exist.
+     *
+     * <p>A "crystal block" is found through its block model, not through a file name scan: every
+     * {@code models/block/**.json} whose name mentions crystal / quartz / gem / shard is parsed and
+     * the textures its model actually references are collected. That is exactly the set of faces a
+     * crystal block shows in game, and because those textures are referenced by a baked model they
+     * are guaranteed to be stitched into the block atlas - the old raw {@code textures/block/*.png}
+     * scan could pick files that no model uses, which then rendered as the missing texture.</p>
+     */
     private static Map<Direction, ResourceLocation> pick() {
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft == null || minecraft.getResourceManager() == null) {
             return new EnumMap<>(Direction.class);
         }
-        Map<ResourceLocation, ?> found =
-                minecraft.getResourceManager().listResources("textures/block", path -> path.getPath().endsWith(".png"));
-        List<ResourceLocation> candidates = new ArrayList<>();
-        for (ResourceLocation raw : found.keySet()) {
-            ResourceLocation id = ResourceLocation.fromNamespaceAndPath(raw.getNamespace(),
-                    raw.getPath().substring("textures/".length(), raw.getPath().length() - ".png".length()));
-            if (SKIP_NAMESPACES.contains(id.getNamespace())) {
+        Set<ResourceLocation> candidates = new LinkedHashSet<>();
+        Map<ResourceLocation, ?> models = minecraft.getResourceManager()
+                .listResources("models/block", path -> path.getPath().endsWith(".json"));
+        for (Map.Entry<ResourceLocation, ?> entry : models.entrySet()) {
+            ResourceLocation file = entry.getKey();
+            String path = file.getPath();
+            String name = path.substring("models/block/".length(), path.length() - ".json".length());
+            if (!looksLikeCrystal(name)) {
                 continue;
             }
-            String path = id.getPath();
-            if (path.startsWith("block/") && path.toLowerCase(Locale.ROOT).contains("crystal")) {
-                candidates.add(id);
+            collectModelTextures(file, candidates);
+        }
+        if (candidates.isEmpty()) {
+            return new EnumMap<>(Direction.class);
+        }
+        List<ResourceLocation> stitched = new ArrayList<>();
+        for (ResourceLocation id : candidates) {
+            if (isStitched(minecraft, id)) {
+                stitched.add(id);
             }
         }
+        List<ResourceLocation> pool = new ArrayList<>(stitched.isEmpty() ? candidates : stitched);
+        pool.sort(null);
+        java.util.Collections.shuffle(pool, new java.util.Random(System.nanoTime()));
         Map<Direction, ResourceLocation> picks = new EnumMap<>(Direction.class);
-        if (candidates.isEmpty()) {
-            return picks;
-        }
-        candidates.sort(null);
-        long seed = System.nanoTime();
-        RandomSource random = RandomSource.create(seed);
-        List<ResourceLocation> pool = new ArrayList<>(new LinkedHashSet<>(candidates));
-        java.util.Collections.shuffle(pool, new java.util.Random(seed));
         for (int i = 0; i < SIDES.size(); i++) {
             picks.put(SIDES.get(i), pool.get(i % pool.size()));
         }
         return picks;
+    }
+
+    /** Block names that read as crystal / quartz / gem blocks in any mod. */
+    private static boolean looksLikeCrystal(String name) {
+        String lower = name.toLowerCase(Locale.ROOT);
+        if (lower.contains("crystal") || lower.contains("quartz") || lower.contains("gem")
+                || lower.contains("shard") || lower.contains("budding")) {
+            return true;
+        }
+        return false;
+    }
+
+    /** Parses one block model and adds every texture id it references to {@code out}. */
+    private static void collectModelTextures(ResourceLocation modelFile, Set<ResourceLocation> out) {
+        try (var reader = Minecraft.getInstance().getResourceManager().getResource(modelFile)
+                .orElseThrow().openAsReader()) {
+            JsonObject root = JsonParser.parseReader(reader).getAsJsonObject();
+            JsonObject textures = root.getAsJsonObject("textures");
+            if (textures == null) {
+                return;
+            }
+            for (String key : textures.keySet()) {
+                String value = textures.get(key).getAsString();
+                if (value.startsWith("#")) {
+                    continue;
+                }
+                ResourceLocation id = ResourceLocation.tryParse(value);
+                if (id == null || SKIP_NAMESPACES.contains(id.getNamespace())) {
+                    continue;
+                }
+                // Model texture values look like "ae2:block/quartz_block" while the atlas key is
+                // "ae2:textures/block/quartz_block.png"; normalise once here.
+                String texPath = id.getPath();
+                if (!texPath.startsWith("textures/")) {
+                    id = ResourceLocation.fromNamespaceAndPath(id.getNamespace(), "textures/" + texPath + ".png");
+                }
+                out.add(id);
+            }
+        } catch (RuntimeException | java.io.IOException e) {
+            // A broken or conditional model simply contributes no faces.
+        }
+    }
+
+    /** True when the block atlas actually contains that sprite (a missing model is not usable). */
+    private static boolean isStitched(Minecraft minecraft, ResourceLocation texture) {
+        try {
+            TextureAtlasSprite sprite = minecraft.getTextureAtlas(TextureAtlas.LOCATION_BLOCKS).apply(texture);
+            return sprite != null && !"missingno".equals(sprite.contents().name().getPath());
+        } catch (RuntimeException e) {
+            return false;
+        }
+    }
+
+    /** Accepts both the old (untouched) and the current form of a saved texture id. */
+    private static ResourceLocation atlasId(ResourceLocation id) {
+        return id.getPath().startsWith("textures/") ? id
+                : ResourceLocation.fromNamespaceAndPath(id.getNamespace(), "textures/" + id.getPath() + ".png");
     }
 
     /** Baked model wrapper that swaps the sprite of every side quad. */
@@ -197,7 +276,7 @@ public final class RandomSideTextures {
             List<BakedQuad> out = new ArrayList<>(quads.size());
             for (BakedQuad quad : quads) {
                 out.add(new BakedQuad(quad.getVertices().clone(), quad.getTintIndex(), quad.getDirection(), sprite,
-                        true));
+                        true, true));
             }
             return out;
         }
@@ -211,6 +290,7 @@ public final class RandomSideTextures {
             if (id == null) {
                 return null;
             }
+            id = atlasId(id);
             TextureAtlasSprite sprite = Minecraft.getInstance()
                     .getTextureAtlas(TextureAtlas.LOCATION_BLOCKS).apply(id);
             // A texture file that no model references is never stitched into the block atlas, so

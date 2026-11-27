@@ -37,6 +37,33 @@ final class Ae2Output {
     private Ae2Output() {
     }
 
+    /**
+     * Inserts {@code amount} of {@code stack} into an adjacent ME network right away, without the
+     * item ever touching the output slots.
+     *
+     * @param simulate {@code true} to only ask the network whether it would take the items
+     * @return how many items the network accepted (all of them when {@code simulate} is set)
+     */
+    static int insert(CrystalMultiplierBlockEntity machine, ItemStack stack, int amount, boolean simulate) {
+        if (amount <= 0 || stack.isEmpty()) {
+            return 0;
+        }
+        Level level = machine.getLevel();
+        if (level == null || level.isClientSide) {
+            return 0;
+        }
+        MEStorage storage = findStorage(level, machine.getBlockPos());
+        if (storage == null) {
+            return 0;
+        }
+        AEItemKey key = AEItemKey.of(stack);
+        if (key == null) {
+            return 0;
+        }
+        long accepted = storage.insert(key, amount, simulate ? Actionable.SIMULATE : Actionable.MODULATE, SOURCE);
+        return (int) Math.min(Math.max(accepted, 0L), Integer.MAX_VALUE);
+    }
+
     static int drain(CrystalMultiplierBlockEntity machine) {
         Level level = machine.getLevel();
         if (level == null || level.isClientSide) {
