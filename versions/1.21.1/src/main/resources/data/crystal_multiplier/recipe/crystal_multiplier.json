@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "ACA",
+    "IXI",
+    "ACA"
+  ],
+  "key": {
+    "A": {
+      "tag": "mekanism:alloys/basic"
+    },
+    "C": {
+      "tag": "c:circuits/basic"
+    },
+    "I": {
+      "tag": "c:ingots/osmium"
+    },
+    "X": {
+      "item": "mekanism:steel_casing"
+    }
+  },
+  "result": {
+    "id": "crystal_multiplier:crystal_multiplier",
+    "count": 1
+  }
+}

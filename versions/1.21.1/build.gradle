@@ -1,0 +1,97 @@
+plugins {
+    id 'java-library'
+    id 'net.neoforged.moddev' version '2.0.144'
+    id 'idea'
+}
+
+repositories {
+    // 本机沙箱访问不了 maven.neoforged.net，用镜像 + 本地重建的 minecraft-dependencies pom；
+    // CI（GitHub Actions）上直接用官方仓库。
+    def localMaven = new File('/root/localmaven')
+    if (localMaven.exists()) {
+        maven { url = 'https://bmclapi2.bangbang93.com/maven' }
+        maven { url = localMaven.toURI().toString() }
+    } else {
+        maven { url = 'https://maven.neoforged.net/releases' }
+    }
+    mavenCentral()
+}
+
+dependencies {
+    // 编译期依赖由 tools/fetch_libs.sh 1.21.1 下载到本工程的 libs/（CI 与本机同一套）。
+    // 全部 compileOnly：Mekanism / AE2 运行时由游戏提供，JEI / EMI / Jade 是可选兼容。
+    compileOnly fileTree(dir: 'libs', include: ['*.jar'])
+}
+
+version = mod_version + "-mc" + minecraft_version
+group = mod_group_id
+
+base {
+    archivesName = mod_id
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+neoForge {
+    version = project.neo_version
+    runs {
+        client {
+            client()
+        }
+        server {
+            server()
+            programArgument '--nogui'
+        }
+    }
+    mods {
+        "${mod_id}" {
+            sourceSet sourceSets.main
+        }
+    }
+}
+
+// 只在 neoforge.mods.toml 上做占位符展开，其它资源文件原样复制。
+// 注意：expand 底层是 Groovy 模板引擎，会把它看到的任何“美元号+花括号”片段
+// 当作表达式求值——资源文件里出现非占位符的该类写法会让构建以模板解析失败报错。
+processResources {
+    // 字符集必须设在 CopySpec 上：放进 filesMatching 的闭包里时，配置缓存还原后的闭包
+    // 委托是 BrokenScript，赋值会以 MissingPropertyException: filteringCharset 失败。
+    filteringCharset = 'UTF-8'
+    // 模板展开用到的属性必须声明成输入，否则只改版本号时这个任务会被判 up-to-date，
+    // 打出来的 jar 里还是旧版本号。
+    inputs.property('mod_id', mod_id)
+    inputs.property('mod_name', mod_name)
+    inputs.property('mod_version', mod_version)
+    inputs.property('mod_authors', mod_authors)
+    inputs.property('mod_license', mod_license)
+    inputs.property('minecraft_version_range', minecraft_version_range)
+    inputs.property('neo_version_range', neo_version_range)
+    // 占位符的值必须在配置阶段取出来：开启了配置缓存后，filesMatching 的闭包在执行时
+    // 不能再访问 project（否则 InvalidUserCodeException: Invocation of 'project' ...）。
+    def templateValues = [
+            mod_id                 : mod_id,
+            mod_name               : mod_name,
+            mod_version            : mod_version,
+            mod_authors            : mod_authors,
+            mod_license            : mod_license,
+            minecraft_version_range: minecraft_version_range,
+            neo_version_range      : neo_version_range
+    ]
+    filesMatching('META-INF/neoforge.mods.toml') {
+        expand templateValues
+    }
+}
+
+jar {
+    manifest {
+        attributes([
+                "Specification-Title"     : mod_id,
+                "Specification-Vendor"    : mod_authors,
+                "Specification-Version"   : "1",
+                "Implementation-Title"    : project.name,
+                "Implementation-Version"  : project.jar.archiveVersion,
+                "Implementation-Vendor"   : mod_authors,
+                "Implementation-Timestamp": new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
+        ])
+    }
+}

@@ -1,0 +1,13 @@
+{
+  "type": "crystal_multiplier:crystal_multiplication",
+  "seed": {
+    "item": "ae2:fluix_crystal"
+  },
+  "result": {
+    "id": "ae2:fluix_crystal",
+    "count": 2
+  },
+  "energy_per_tick": 280,
+  "ticks": 240,
+  "crystals_per_parallel": 16
+}

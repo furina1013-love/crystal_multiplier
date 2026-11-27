@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "ACA",
+    "IXI",
+    "ACA"
+  ],
+  "key": {
+    "A": {
+      "tag": "mekanism:alloys/infused"
+    },
+    "C": {
+      "tag": "c:circuits/advanced"
+    },
+    "I": {
+      "tag": "c:ingots/osmium"
+    },
+    "X": {
+      "item": "crystal_multiplier:crystal_multiplier"
+    }
+  },
+  "result": {
+    "id": "crystal_multiplier:crystal_multiplier_advanced",
+    "count": 1
+  }
+}

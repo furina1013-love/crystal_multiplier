@@ -1,0 +1,9 @@
+# 依赖清单：set|文件名|URL
+1.21.1|Mekanism-1.21.1-10.7.19.85.jar|https://cdn.modrinth.com/data/Ce6I4WUE/versions/5KzzycBT/Mekanism-1.21.1-10.7.19.85.jar
+1.21.1|appliedenergistics2-19.2.20.jar|https://cdn.modrinth.com/data/XxWD5pD3/versions/7Ac6mXbf/appliedenergistics2-19.2.20.jar
+1.21.1|jei-1.21.1-neoforge-19.76.1.482.jar|https://cdn.modrinth.com/data/u6dRKJwZ/versions/vlNHlgS9/jei-1.21.1-neoforge-19.76.1.482.jar
+1.21.1|emi-1.1.24+1.21.1+neoforge.jar|https://cdn.modrinth.com/data/fRiHVvU7/versions/5sIPA1To/emi-1.1.24%2B1.21.1%2Bneoforge.jar
+1.21.1|Jade-1.21.1-NeoForge-15.10.6.jar|https://cdn.modrinth.com/data/nvQzSEkH/versions/eYz2YBGT/Jade-1.21.1-NeoForge-15.10.6.jar
+1.20.1|Mekanism-1.20.1-10.4.16.80.jar|https://cdn.modrinth.com/data/Ce6I4WUE/versions/uxe1WQp4/Mekanism-1.20.1-10.4.16.80.jar
+1.20.1|emi-1.1.24+1.20.1+forge.jar|https://cdn.modrinth.com/data/fRiHVvU7/versions/Axuu9I9R/emi-1.1.24%2B1.20.1%2Bforge.jar
+1.20.1|Jade-1.20.1-Forge-11.13.3.jar|https://cdn.modrinth.com/data/nvQzSEkH/versions/xJQHCmWJ/Jade-1.20.1-Forge-11.13.3.jar

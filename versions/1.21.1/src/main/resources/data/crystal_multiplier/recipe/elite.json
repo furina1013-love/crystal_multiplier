@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "ACA",
+    "IXI",
+    "ACA"
+  ],
+  "key": {
+    "A": {
+      "tag": "mekanism:alloys/reinforced"
+    },
+    "C": {
+      "tag": "c:circuits/elite"
+    },
+    "I": {
+      "tag": "c:ingots/osmium"
+    },
+    "X": {
+      "item": "crystal_multiplier:crystal_multiplier_advanced"
+    }
+  },
+  "result": {
+    "id": "crystal_multiplier:crystal_multiplier_elite",
+    "count": 1
+  }
+}

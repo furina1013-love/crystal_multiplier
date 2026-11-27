@@ -8,3 +8,9 @@ libs/
 *.iml
 .vscode/
 *.log
+.private/
+versions/*/build/
+versions/*/.gradle/
+versions/*/run/
+versions/*/libs/
+versions/*/dist/*.jar

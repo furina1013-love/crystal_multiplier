@@ -7,7 +7,7 @@ VER="$1"
 if [ -z "$VER" ]; then echo "用法: tools/release_both.sh <version>"; exit 1; fi
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OTHER="${CM_1211_DIR:-/root/java-mod-dev/crystal_multiplier_1211}"
-TOKEN_FILE="${GH_TOKEN_FILE:-/root/java-mod-dev/githubtoken.txt}"
+TOKEN_FILE="${GH_TOKEN_FILE:-/root/java-mod-dev/_private/githubtoken.txt}"
 REPO="${GH_REPO:-furina1013-love/crystal_multiplier}"
 INIT="${CM_GRADLE_INIT:-/tmp/init-mirror.gradle}"
 
@@ -26,7 +26,7 @@ if [ -f "$INIT" ]; then GRADARGS="$GRADARGS --init-script $INIT"; fi
 ( cd "$OTHER" && ./gradlew build $GRADARGS | grep -E "BUILD|error:" | tail -2 )
 cp -f "build/libs/crystal_multiplier-$VER-mc1.20.1.jar" dist/
 cp -f "$OTHER/build/libs/crystal_multiplier-$VER-mc1.21.1.jar" dist/
-( cd dist && sha256sum crystal_multiplier-*.jar > SHA256SUMS.txt )
+( cd dist && sha256sum crystal_multiplier-$VER-*.jar > SHA256SUMS.txt )
 
 echo "[4/5] 提交 + 打 tag + 推送"
 git add -A

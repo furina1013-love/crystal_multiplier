@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "values": [
+    "crystal_multiplier:crystal_multiplier",
+    "crystal_multiplier:crystal_multiplier_advanced",
+    "crystal_multiplier:crystal_multiplier_elite",
+    "crystal_multiplier:crystal_multiplier_ultimate"
+  ]
+}

@@ -1,0 +1,84 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: build ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: mc1.20.1
+            dir: .
+            set: 1.20.1
+            java: 17
+          - name: mc1.21.1
+            dir: versions/1.21.1
+            set: 1.21.1
+            java: 21
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK ${{ matrix.java }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ matrix.set }}-${{ hashFiles('**/*.gradle', '**/gradle.properties') }}
+          restore-keys: gradle-${{ matrix.set }}-
+
+      - name: 下载编译期依赖 (libs/)
+        run: bash tools/fetch_libs.sh ${{ matrix.set }} ${{ matrix.dir }}/libs
+
+      - name: 构建
+        working-directory: ${{ matrix.dir }}
+        run: ./gradlew build --no-daemon --stacktrace
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: crystal_multiplier-${{ matrix.name }}
+          path: ${{ matrix.dir }}/build/libs/*.jar
+          if-no-files-found: error
+
+  release:
+    name: 单 Release（两版 jar）
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: 收集 jar
+        run: |
+          mkdir -p out
+          find artifacts -name '*.jar' -exec cp {} out/ \;
+          ls -la out
+
+      - name: 发布
+        uses: softprops/action-gh-release@v2
+        with:
+          files: out/*.jar
+          generate_release_notes: true
+          body: |
+            Minecraft 1.20.1 (Forge) 与 1.21.1 (NeoForge) 两个版本，同一个版本号放在一个 Release 里。
+            下载对应游戏版本的 jar 放进 mods/ 即可。

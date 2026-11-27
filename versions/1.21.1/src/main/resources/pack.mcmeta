@@ -1,0 +1,10 @@
+{
+  "pack": {
+    "description": "crystal_multiplier resources",
+    "pack_format": 48,
+    "supported_formats": [
+      34,
+      48
+    ]
+  }
+}

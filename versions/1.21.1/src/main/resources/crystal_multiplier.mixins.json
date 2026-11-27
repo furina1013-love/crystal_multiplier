@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "cn.furina.crystalmultiplier.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "EjectorMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

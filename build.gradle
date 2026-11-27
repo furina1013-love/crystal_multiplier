@@ -3,7 +3,7 @@ plugins {
     id 'net.minecraftforge.gradle' version '[6.0.16,6.2)'
 }
 
-version = '1.8.1'
+version = '1.8.2'
 group = 'cn.furina.crystalmultiplier'
 base { archivesName = 'crystal_multiplier' }
 
@@ -42,10 +42,8 @@ dependencies {
     compileOnly fileTree(dir: 'libs', include: ['*.jar'])
     // JEI is optional: only the compat classes touch it, and they are discovered by JEI itself.
     compileOnly "mezz.jei:jei-1.20.1-forge:15.20.0.134"
-    // EMI and Jade are optional too, and must never become runtime requirements:
-    // the compat classes are only loaded by those mods themselves when they are installed.
-    compileOnly files('/root/libs1201/emi-1.1.24+1.20.1+forge.jar')
-    compileOnly files('/root/libs1201/Jade-1.20.1-Forge-11.13.3.jar')
+    // EMI / Jade / Mekanism 由 tools/fetch_libs.sh 落到 libs/，上面那条 fileTree 已经覆盖；
+    // 它们都是 compileOnly：EMI、Jade 是可选的，Mekanism 运行时由游戏提供。
     // Mekanism is a hard dependency of this mod (see mods.toml), so it is fine to compile against it:
     // mekanism.api.Upgrade and mekanism.common.item.interfaces.IUpgradeItem are what upgrade cards use.
     compileOnly("maven.modrinth:mekanism:uxe1WQp4") { transitive = false }

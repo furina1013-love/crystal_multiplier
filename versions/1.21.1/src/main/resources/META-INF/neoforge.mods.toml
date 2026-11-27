@@ -1,0 +1,67 @@
+modLoader="javafml"
+loaderVersion="[4,)"
+license="${mod_license}"
+
+[[mods]]
+modId="${mod_id}"
+version="${mod_version}"
+displayName="水晶增殖机 / Crystal Multiplier"
+authors="芙宁娜重度依赖, b站：furina重度依赖-1013"
+logoFile="crystal_multiplier_logo.png"
+description='''
+A Mekanism-styled machine for non-recursive AE2 crystal multiplication.
+用于稳定自动化赛特斯、充能赛特斯、福鲁伊克斯等 AE2 系水晶的增殖机器（种子不消耗，纯 FE 驱动）。
+'''
+
+[[dependencies.${mod_id}]]
+modId="neoforge"
+type="required"
+versionRange="${neo_version_range}"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.${mod_id}]]
+modId="minecraft"
+type="required"
+versionRange="${minecraft_version_range}"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.${mod_id}]]
+modId="mekanism"
+type="required"
+versionRange="[10.7,)"
+ordering="AFTER"
+side="BOTH"
+
+[[dependencies.${mod_id}]]
+modId="ae2"
+type="required"
+versionRange="[19.2,)"
+ordering="AFTER"
+side="BOTH"
+
+[[dependencies.${mod_id}]]
+modId="jei"
+type="optional"
+versionRange="[19,)"
+ordering="AFTER"
+side="CLIENT"
+
+# 可选兼容：本模组只在编译期引用它们，缺失时对应插件类不会被加载。
+[[dependencies.${mod_id}]]
+modId="emi"
+type="optional"
+versionRange="[1.1,)"
+ordering="AFTER"
+side="CLIENT"
+
+[[dependencies.${mod_id}]]
+modId="jade"
+type="optional"
+versionRange="[15,)"
+ordering="AFTER"
+side="CLIENT"
+
+[[mixins]]
+config="crystal_multiplier.mixins.json"

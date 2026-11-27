@@ -16,7 +16,7 @@ if not VER:
     raise SystemExit('用法: tools/gh_release.py <version>')
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-TOKEN_FILE = os.environ.get('GH_TOKEN_FILE', '/root/java-mod-dev/githubtoken.txt')
+TOKEN_FILE = os.environ.get('GH_TOKEN_FILE', '/root/java-mod-dev/_private/githubtoken.txt')
 REPO = os.environ.get('GH_REPO', 'furina1013-love/crystal_multiplier')
 DIST = os.path.join(ROOT, 'dist')
 TAG = 'v' + VER
@@ -57,9 +57,10 @@ def call(method, url, data=None, ctype='application/json'):
 
 body = changelog(VER) or ('## ' + VER)
 import glob
+BT = chr(96) * 2
 jars = sorted(os.path.basename(x) for x in glob.glob(os.path.join(DIST, 'crystal_multiplier-%s-mc*.jar' % VER)))
 if jars:
-    body += chr(10) + chr(10) + '### 下载' + chr(10) + chr(10).join('- ' + BT + '%s' + BT % j for j in jars)
+    body += chr(10) + chr(10) + '### 下载' + chr(10) + chr(10).join(('- ' + BT + '%s' + BT) % j for j in jars)
 
 payload = json.dumps({'tag_name': TAG, 'target_commitish': 'main', 'name': VER,
                       'body': body, 'draft': False, 'prerelease': False}).encode('utf-8')
