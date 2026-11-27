@@ -68,16 +68,20 @@ jobs:
         with:
           path: artifacts
 
-      - name: 收集 jar
+      - name: 收集 jar 并生成校验和
         run: |
           mkdir -p out
           find artifacts -name '*.jar' -exec cp {} out/ \;
-          ls -la out
+          cd out
+          sha256sum *.jar > SHA256SUMS.txt
+          cp "$GITHUB_WORKSPACE/dist/cover.png" . || true
+          cp "$GITHUB_WORKSPACE/LICENSE" . || true
+          ls -la
 
       - name: 发布
         uses: softprops/action-gh-release@v2
         with:
-          files: out/*.jar
+          files: out/*
           generate_release_notes: true
           body: |
             Minecraft 1.20.1 (Forge) 与 1.21.1 (NeoForge) 两个版本，同一个版本号放在一个 Release 里。

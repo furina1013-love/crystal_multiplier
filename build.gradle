@@ -3,9 +3,14 @@ plugins {
     id 'net.minecraftforge.gradle' version '[6.0.16,6.2)'
 }
 
-version = '1.8.2'
+version = '1.8.3'
 group = 'cn.furina.crystalmultiplier'
 base { archivesName = 'crystal_multiplier' }
+
+// 与 1.21.1 版对齐：产物名带游戏版本，例如 crystal_multiplier-1.8.3-mc1.20.1.jar
+tasks.named('jar') {
+    archiveFileName = 'crystal_multiplier-' + project.version + '-mc1.20.1.jar'
+}
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
 
