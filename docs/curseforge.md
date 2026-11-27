@@ -18,6 +18,9 @@ An AE2-flavoured multiplication machine for crystal production lines. Instead of
   upgrade window, side configuration, energy tab and redstone tab. Upgrade cards go through the official `Upgrade` API.
 - **Four machine tiers** — higher tiers are faster, hold more energy and have more slots.
 - **One crystal type per machine at a time** — vanilla-like behaviour, no hidden limits.
+- **Direct output into AE2** — put any AE2 cable (or an ME interface) against the machine and the produced crystals are
+  inserted straight into that ME network every tick, no interface needed. This mirrors the "products return to the network"
+  behaviour of Productive Bees Genesis; whatever the network refuses is left to Mekanism's ejector.
 
 ---
 
@@ -137,6 +140,7 @@ Note: ExtendedAE for 1.20.1 (modid `expatternprovider`) does not ship `entro_cry
 | `upgradeCardsPerStep` | 8 | Cards per multiplier step; 8 matches the vanilla per-type cap, addons that raise the cap keep stacking beyond it |
 | `ejectEveryTick` | **true** | This machine only: push the finished products out of the output slots every tick instead of Mekanism's 10 tick interval (crafting speed untouched) |
 | `globalEjectEveryTick` | **false** | The same per tick item ejection for every Mekanism machine (own machines, factories, addons); crafting speed untouched |
+| `aeOutput` | **true** | Push the output slots straight into the ME network of an adjacent AE2 cable / interface every tick (products return to the network) |
 
 Every key carries translation keys (`crystal_multiplier.configuration.machine.<key>` plus a matching `.tooltip`, section title
 `crystal_multiplier.configuration.machine`), so config screen mods such as **Configured** and **Forge Config Screens** show localised
@@ -190,6 +194,7 @@ progress arrow inside the machine (52,45,32,8) opens the matching recipe.
 
 ## Changelog
 
+- **1.9.0** — New **AE2 network output**: an adjacent AE2 cable / interface receives the products directly (config `aeOutput`, on by default), the "products return to the network" feature borrowed from Productive Bees Genesis. Fixed the **animated front texture** — the 1.8.x 7 frames were all identical, so the machine looked frozen; it is now a real breathing + diagonal-flow loop, tinted per tier (blue / green / purple / red). Removed the **particles** on product ejection (the rate limited chime stays). Random side textures now fall back to the machine texture when the picked texture is not stitched into the block atlas, so no more black/magenta faces.
 - **1.7.3** — Author updated to 芙宁娜重度依赖 / b站：furina重度依赖-1013 (mods.toml authors, LICENSE and README copyright). No functional change.
 - **1.7.2** — New `upgradeCardsPerStep` option (default 8) drives the parallel and energy-savings multiplier, so addons that raise the per-machine card cap keep scaling instead of stopping after one step. Parallel multiplier cap raised from 4,096 to 1,048,576; `tools/api_push.py` falls back to the GitHub API when git push cannot reach github.com.
 - **1.7.1** — Upgrade semantics changed: speed cards now add parallel lanes and energy cards only cut the draw; neither card enlarges the seed slot any more, and the `seedCapacityPerUpgrade` config key was removed.

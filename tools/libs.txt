@@ -7,3 +7,4 @@
 1.20.1|Mekanism-1.20.1-10.4.16.80.jar|https://cdn.modrinth.com/data/Ce6I4WUE/versions/uxe1WQp4/Mekanism-1.20.1-10.4.16.80.jar
 1.20.1|emi-1.1.24+1.20.1+forge.jar|https://cdn.modrinth.com/data/fRiHVvU7/versions/Axuu9I9R/emi-1.1.24%2B1.20.1%2Bforge.jar
 1.20.1|Jade-1.20.1-Forge-11.13.3.jar|https://cdn.modrinth.com/data/nvQzSEkH/versions/xJQHCmWJ/Jade-1.20.1-Forge-11.13.3.jar
+1.20.1|appliedenergistics2-forge-15.4.12.jar|https://cdn.modrinth.com/data/XxWD5pD3/versions/QRpVsqDI/appliedenergistics2-forge-15.4.12.jar

@@ -211,6 +211,13 @@ public final class RandomSideTextures {
             }
             TextureAtlasSprite sprite = Minecraft.getInstance()
                     .getTextureAtlas(TextureAtlas.LOCATION_BLOCKS).apply(id);
+            // A texture file that no model references is never stitched into the block atlas, so
+            // apply() hands back the missing sprite. Painting a face with it would show the black and
+            // magenta checkerboard; keep the model's own texture instead and retry later (the atlas
+            // may also simply not be ready yet when a model is baked very early).
+            if (sprite == null || "missingno".equals(sprite.contents().name().getPath())) {
+                return null;
+            }
             this.sprites.put(side, sprite);
             return sprite;
         }

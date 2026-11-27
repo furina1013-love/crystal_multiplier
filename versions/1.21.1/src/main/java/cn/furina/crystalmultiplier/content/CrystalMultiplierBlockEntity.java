@@ -1,5 +1,6 @@
 package cn.furina.crystalmultiplier.content;
 
+import cn.furina.crystalmultiplier.compat.ae2.Ae2Compat;
 import cn.furina.crystalmultiplier.config.CrystalMultiplierConfig;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -33,7 +34,6 @@ import mekanism.common.upgrade.IUpgradeData;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Holder;
-import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -66,15 +66,9 @@ public class CrystalMultiplierBlockEntity extends TileEntityMekanism implements 
     /** Kept for the menu/screen code: upper bound for a single simulated extraction. */
     public static final int MAX_STACK_COUNT = CrystalSlot.MAX_VISIBLE;
 
-    /* --------------------------------------------------- production feedback (vfx) */
-    /** Particles per finished batch. Small on purpose: this runs next to a machine that may finish every tick. */
-    private static final int EJECT_PARTICLE_COUNT = 6;
-    /** How far in front of the machine face the particles appear, in blocks (0.5 = block centre, +0.6 = just outside). */
+    /* --------------------------------------------------- production feedback */
+    /** How far in front of the face the chime plays, in blocks (0.5 = block centre, +0.6 = just outside). */
     private static final double EJECT_FRONT_OFFSET = 0.6D;
-    /** Random spread of the particle cloud in blocks. */
-    private static final double EJECT_PARTICLE_SPREAD = 0.25D;
-    /** Movement speed of the particles (0 = they just pop and fall). */
-    private static final double EJECT_PARTICLE_SPEED = 0.02D;
     /** At most one chime per this many ticks, so 20 tps machines cannot spam the sound channel. */
     private static final int EJECT_SOUND_INTERVAL_TICKS = 40;
     /** Deliberately quiet: a hint, not a fanfare. */
@@ -341,7 +335,7 @@ public class CrystalMultiplierBlockEntity extends TileEntityMekanism implements 
                             this.progress = 0.0D;
                             if (this.pushResult(result, amount)) {
                                 // Only when something actually landed in the output slots.
-                                this.spawnEjectFeedback();
+                                this.playEjectChime();
                             }
                         }
                     }
@@ -376,6 +370,9 @@ public class CrystalMultiplierBlockEntity extends TileEntityMekanism implements 
         // ticked explicitly, exactly like TileEntityConfigurableMachine does for Mekanism machines.
         // It runs last on purpose: pushResult above already put this tick's products into the output
         // slots, so with the "eject every tick" option on they leave the machine in the same tick.
+        // AE2: hand the finished batch to an adjacent ME network first (产物回网); whatever the
+        // network does not take stays in the slots for the ejector below.
+        Ae2Compat.drainOutput(this);
         if (this.ejectorComponent != null) {
             this.ejectorComponent.tickServer();
         }
@@ -465,27 +462,26 @@ public class CrystalMultiplierBlockEntity extends TileEntityMekanism implements 
     }
 
     /**
-     * Visual/audio feedback for a finished batch: a handful of vanilla particles in front of the block
-     * face plus a quiet, rate limited chime. No custom sound or texture files are involved.
+     * Audio feedback for a finished batch: one quiet, rate limited chime in front of the block.
      *
-     * <p>1.21.1 notes: {@code Level} has no {@code sendParticles} in this version - the method lives on
-     * {@link ServerLevel} and the client copy of the tile must never call it, so the server tick is the
-     * only caller and the cast is guarded by an {@code instanceof}.
-     * {@code Level#playSound(Player, double, double, double, SoundEvent, SoundSource, float, float)} is
-     * what the vanilla code uses for the packet broadcast on the server, so nearby clients both see and
-     * hear it.</p>
+     * <p>The vanilla particle puff that used to run here was removed on request: on a wall of
+     * machines the sparks covered the products and cost one particle packet per batch. The chime is
+     * rate limited to one every {@link #EJECT_SOUND_INTERVAL_TICKS} ticks and only plays when a real
+     * item just left the output slots.</p>
+     *
+     * <p>1.21.1 notes: {@code Level#playSound(Player, double, double, double, SoundEvent, SoundSource,
+     * float, float)} is what the vanilla code uses to broadcast the packet from the server, so nearby
+     * clients still hear it. The client copy of the tile never reaches this method.</p>
      */
-    private void spawnEjectFeedback() {
+    private void playEjectChime() {
         if (!(this.level instanceof ServerLevel serverLevel)) {
             return;
         }
         Direction facing = this.getDirection();
-        // Middle of the front face, nudged a little outwards so the particles are visible from outside.
+        // Middle of the front face, nudged a little outwards so the chime is placed at the output side.
         double x = this.worldPosition.getX() + 0.5D + facing.getStepX() * EJECT_FRONT_OFFSET;
         double y = this.worldPosition.getY() + 0.5D + facing.getStepY() * EJECT_FRONT_OFFSET;
         double z = this.worldPosition.getZ() + 0.5D + facing.getStepZ() * EJECT_FRONT_OFFSET;
-        serverLevel.sendParticles(ParticleTypes.END_ROD, x, y, z, EJECT_PARTICLE_COUNT,
-                EJECT_PARTICLE_SPREAD, EJECT_PARTICLE_SPREAD, EJECT_PARTICLE_SPREAD, EJECT_PARTICLE_SPEED);
         long gameTime = serverLevel.getGameTime();
         if (gameTime - this.lastEjectSoundTick >= EJECT_SOUND_INTERVAL_TICKS) {
             this.lastEjectSoundTick = gameTime;

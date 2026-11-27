@@ -62,10 +62,24 @@
 | `upgradeCardsPerStep` | **8** | 多少张同类升级卡算一个倍率台阶；默认 8 = Mek 原版单类卡上限，**附属提高上限后会继续叠加**（16 张 = 底数²，24 张 = 底数³） |
 | `ejectEveryTick` | **true** | 本机开关：产物槽每 tick 往相邻容器 / 管道弹一次（Mekanism 默认 10 tick 一次）。**不影响生产速度** |
 | `globalEjectEveryTick` | **false** | 全局开关：所有 Mekanism 机器（本体机器、工厂、附属机械）的产物槽都每 tick 弹一次。**不影响生产速度** |
+| `aeOutput` | **true** | 产物槽里的东西每 tick 先直接塞进贴着机器的 AE2 网络（产物回网），网络不收的才走弹出逻辑 |
 
 「每 tick 出产物」分成两个独立开关：`ejectEveryTick` 只管本机器，**默认开启**；`globalEjectEveryTick` 通过 `EjectorMixin`
 把同一条规则施加给**所有 Mekanism 机器**（本体机器、工厂、附属机械），**默认关闭**。两者做的都是把 Mek 内部 `tickDelay`
 （默认 10 tick 的弹出冷却）清零：**不改变生产速度**，只让已经做好的成品更早离开机器。
+
+### 产物回 AE 网络（AE2）
+
+参考 **资源蜜蜂：创世**（Productive Bees Genesis）的「产物回网」：机器**不需要再接 ME 接口**，
+只要有一根 AE2 线缆（或 ME 接口、总线等任意 AE2 网格宿主）贴着机器任意一面，产物就会在产出后
+**先直接写进那个 ME 网络**，然后才轮到 Mekanism 的弹出逻辑处理网络塞不下的部分。
+
+- 每次服务端 tick、机器真正有产物之后，遍历六个邻居，取第一个「已启动网格 + 有存储服务」的 AE2 节点作为目标，
+  用 `MEStorage#insert` 写入，并按实际接受数量从产物槽里扣除（`CrystalSlot#shrinkStored`，一次可以清掉 4096 颗）。
+- **刻意不做缓存**：网络断线后如果继续往缓存的 `MEStorage` 里塞，物品会凭空消失；所以每 tick 重新找网络，
+  找不到网络就返回 0，产物留在槽里交给弹出器 / 玩家。
+- 全局开关 `aeOutput` 默认开启；关掉后完全回到只看侧面配置、只靠 Mek 弹出器的行为。
+- 只在 AE2 存在时才加载相关类（`compat/ae2`），AE2 缺失时机器照常工作。
 
 每个键都带翻译键（`crystal_multiplier.configuration.machine.<键名>` 与同名 `.tooltip`），段标题是
 `crystal_multiplier.configuration.machine`，所以 **Configured（MrCrayfish）** 与 **Forge Config Screens** 这类界面模组
@@ -173,7 +187,10 @@ AE2 的物品只用注册名（`ae2:certus_quartz_crystal` 等）与标签访问
 
 - `mods.toml`：forge [47,)、minecraft [1.20.1,1.21)、ae2 [15,)、mekanism [10.4,) 为必需；expatternprovider（ExtendedAE 1.20.1 的真实 modid）、appflux、extendedae_plus、jei 为可选软依赖。
 - JEI 为可选：装了就注册「水晶增殖」分类与催化剂，不装则完全不加载相关类（`compileOnly` 依赖，不进入服务端）。
-- 方块模型复用 Mekanism 的 `mekanism:block/machine` 父模型（保证与 Mekanism 机器同款外形）。贴图以 1.7.0 的新美术为基础（`新贴图基础/front.png` 与 `front_active.png`），**原图本身不动、只额外点几个像素**：四档在底边分别点 1 / 2 / 3 / 4 个档位点（基础=蓝、高级=绿、精英=紫、终极=红）；`*_front_active.png` 沿用新图自带的 `.mcmeta`，按 7 帧播放。侧 / 顶贴图仍是各档配色。
+- 方块模型复用 Mekanism 的 `mekanism:block/machine` 父模型（保证与 Mekanism 机器同款外形）。贴图以 1.7.0 的新美术为基础，**原图本身不动、只额外点几个像素**：四档在底边分别点 1 / 2 / 3 / 4 个档位点（基础=蓝、高级=绿、精英=紫、终极=红）。
+- 运行状态（`*_front_active.png`，16×112 + `.mcmeta`，7 帧 × 3 tick）**1.9.0 重画**：中间的能量宝石按档位染色（蓝 / 绿 / 紫 / 红），
+  并做了「呼吸 + 斜向流光」的 7 帧循环——1.8.x 的旧图 7 帧其实完全一样，进游戏看是静止的，这次把它修好；
+  产物弹出时的**粒子已经去掉**（只留每 40 tick 最多一声的合鸣），机墙前面不会再被电火花糊住。
 - 1.6.0 修改了物品数量的网络编码（VarInt），**客户端与服务端都必须安装 1.6.0+**，不能与旧版本混用；与其它修改物品数量上限的模组同时使用时请自行验证。
 
 ## 授权
@@ -186,6 +203,7 @@ Copyright (c) 2026 芙宁娜重度依赖（b站：furina重度依赖-1013）。
 
 ## 更新记录
 
+- **1.9.0**：新增 **AE2 产物回网**——贴着机器的 AE2 线缆 / 接口会把产物直接收进 ME 网络（参考资源蜜蜂：创世的产物回网，配置项 `aeOutput` 默认开启，网络塞不下的才走弹出器）；修复**动态贴图**（1.8.x 的 `*_front_active.png` 七帧完全相同、进游戏是静止的，现按档位染色重画成真正的呼吸 + 斜向流光循环）；**去掉产物弹出的粒子**（只保留限频音效）；随机侧面贴图在选到的贴图没被拼进方块图集时回退到本模组贴图，不再出现紫黑方块。AE2 编译期依赖加进 `tools/libs.txt`（CI 自动下载）。
 - **1.8.3**：构建发布流程切到 GitHub Actions——源码推上去由 CI 构建两版，打 tag 自动发单个 Release（同时含 mc1.20.1 与 mc1.21.1 两个 jar，并附 SHA256SUMS、封面、License）；1.21.1 源码并入仓库 versions/1.21.1，编译期依赖统一由 tools/fetch_libs.sh 落到 libs/，本机私有文件放 .private/。
 - **1.8.1**：新增 **EMI** 配方页与 **Jade** 方块信息兼容（都是可选依赖，没装不影响加载）；构建提速（Gradle 常驻 daemon + 并行 + 构建缓存 + 配置缓存，热构建 25s→2s）；发版方式改为**一个版本一个 Release**，同一个 Release 里同时提供 `mc1.20.1` 与 `mc1.21.1` 两个 jar。
 - **1.8.0**（功能版）：机器五面随机水晶贴图（首次启动从已安装模组的水晶方块里抽 5 张、写进 `config/crystal_multiplier_side_textures.json` 后固定）；配方数值可配（`defaultCrystalEnergyPerTick` / `defaultCrystalTicks` / `recipeOverrides`）；新增 `disableAutoRecipes` 与 `configVersion` 配置；GUI 与升级卡悬停提示补全（种子不消耗、并行算法、速度卡/能量卡作用）；产量弹出时加音效与粒子；比较器输出按进度与种子存量给 0-15 信号。

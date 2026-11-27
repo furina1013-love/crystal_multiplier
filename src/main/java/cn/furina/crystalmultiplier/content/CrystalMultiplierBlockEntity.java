@@ -1,6 +1,7 @@
 package cn.furina.crystalmultiplier.content;
 
 import cn.furina.crystalmultiplier.CrystalMultiplierMod;
+import cn.furina.crystalmultiplier.compat.ae2.Ae2Compat;
 import cn.furina.crystalmultiplier.config.CrystalMultiplierConfig;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -35,12 +36,10 @@ import mekanism.common.upgrade.IUpgradeData;
 import mekanism.common.util.MekanismUtils;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
@@ -65,12 +64,6 @@ public class CrystalMultiplierBlockEntity extends TileEntityMekanism implements 
 
     /* ------------------------------------------------- "a batch just finished" feedback */
 
-    /** How many particles one finished batch puffs out of the front face. */
-    private static final int EJECT_PARTICLE_COUNT = 6;
-    /** Random spread of those particles around the front face, in blocks. */
-    private static final double EJECT_PARTICLE_SPREAD = 0.3D;
-    /** Extra velocity handed to every particle (electric sparks look better almost still). */
-    private static final double EJECT_PARTICLE_SPEED = 0.02D;
     /** Minimum number of ticks between two eject sounds: a 4 tick batch would otherwise spam audio. */
     private static final int EJECT_SOUND_COOLDOWN_TICKS = 40;
     /** Chime volume, quiet on purpose - this plays next to the player's base, not in their face. */
@@ -379,6 +372,9 @@ public class CrystalMultiplierBlockEntity extends TileEntityMekanism implements 
         // ticked explicitly, exactly like TileEntityConfigurableMachine does for Mekanism machines.
         // It runs last on purpose: pushResult above already put this tick's products into the output
         // slots, so with the "eject every tick" option on they leave the machine in the same tick.
+        // AE2: hand the finished batch to an adjacent ME network first (产物回网). Whatever the
+        // network does not take stays in the output slots for the ejector below.
+        Ae2Compat.drainOutput(this);
         if (this.ejectorComponent != null) {
             this.ejectorComponent.tickServer();
         }
@@ -425,22 +421,22 @@ public class CrystalMultiplierBlockEntity extends TileEntityMekanism implements 
         }
         this.markForSave();
         if (remaining < amount) {
-            // 真的推进去东西了才放特效，避免产物槽塞满时每 tick 空放粒子。
-            this.playEjectEffects();
+            // 真的推进去东西了才响一声，避免产物槽塞满时每 tick 空放音效。
+            this.playEjectChime();
         }
     }
 
     /**
-     * Feedback for a finished batch: a small puff of particles in front of the machine plus a quiet
-     * chime at most once every {@link #EJECT_SOUND_COOLDOWN_TICKS} ticks.
+     * Feedback for a finished batch: one quiet chime in front of the machine, at most once every
+     * {@link #EJECT_SOUND_COOLDOWN_TICKS} ticks.
      *
-     * <p>Server side only: {@code ServerLevel#sendParticles} pushes the particles to every tracking
-     * client (1.20.1 has no {@code Level#sendParticles}, that method only exists on ServerLevel), so
-     * the client never has to run this logic itself, and a machine that is not being looked at costs
-     * no rendering work.</p>
+     * <p>There used to be a puff of {@code ELECTRIC_SPARK} particles here too. They were removed on
+     * request: on a wall of machines the sparks covered the products, produced a lot of packets and
+     * made the machine look like it was leaking energy. The chime is server side and only plays when
+     * a real item just left the output slots, so a full machine stays silent.</p>
      */
-    private void playEjectEffects() {
-        if (!(this.level instanceof ServerLevel serverLevel)) {
+    private void playEjectChime() {
+        if (this.level == null || this.level.isClientSide) {
             return;
         }
         Direction facing = this.getDirection();
@@ -449,16 +445,10 @@ public class CrystalMultiplierBlockEntity extends TileEntityMekanism implements 
         }
         // 正面（产物弹出的那一面）的中心点。
         BlockPos front = this.worldPosition.relative(facing);
-        double x = front.getX() + 0.5D;
-        double y = front.getY() + 0.5D;
-        double z = front.getZ() + 0.5D;
-        serverLevel.sendParticles(ParticleTypes.ELECTRIC_SPARK, x, y, z, EJECT_PARTICLE_COUNT,
-                EJECT_PARTICLE_SPREAD, EJECT_PARTICLE_SPREAD, EJECT_PARTICLE_SPREAD, EJECT_PARTICLE_SPEED);
-
-        long now = serverLevel.getGameTime();
+        long now = this.level.getGameTime();
         if (now - this.lastEjectSoundTick >= EJECT_SOUND_COOLDOWN_TICKS) {
             this.lastEjectSoundTick = now;
-            serverLevel.playSound(null, front, SoundEvents.AMETHYST_BLOCK_CHIME, SoundSource.BLOCKS,
+            this.level.playSound(null, front, SoundEvents.AMETHYST_BLOCK_CHIME, SoundSource.BLOCKS,
                     EJECT_SOUND_VOLUME, EJECT_SOUND_PITCH);
         }
     }

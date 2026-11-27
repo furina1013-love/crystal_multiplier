@@ -31,6 +31,7 @@ public final class CrystalMultiplierConfig {
     public static final ForgeConfigSpec.IntValue MAX_UPGRADE_MULTIPLIER;
     public static final ForgeConfigSpec.IntValue UPGRADE_CARDS_PER_STEP;
     public static final ForgeConfigSpec.BooleanValue EJECT_EVERY_TICK;
+    public static final ForgeConfigSpec.BooleanValue AE_OUTPUT;
     public static final ForgeConfigSpec.BooleanValue GLOBAL_EJECT_EVERY_TICK;
     public static final ForgeConfigSpec.IntValue DEFAULT_CRYSTAL_ENERGY_PER_TICK;
     public static final ForgeConfigSpec.IntValue DEFAULT_CRYSTAL_TICKS;
@@ -106,6 +107,17 @@ public final class CrystalMultiplierConfig {
                         "Crafting speed is not touched by this option. Default true.")
                 .translation(LANG_PREFIX + ".ejectEveryTick")
                 .define("ejectEveryTick", true);
+
+        AE_OUTPUT = builder
+                .comment("Push finished products straight into the ME network of an AE2 cable, interface or",
+                        "other grid host that touches the machine, every tick (the \"产物回网\" behaviour",
+                        "known from Productive Bees Genesis).",
+                        "Nothing needs to be configured in the machine: cable it up and the output slots are",
+                        "drained into the network before Mekanism's own ejector sees them. Items the network",
+                        "does not accept stay in the slots and are ejected normally. Off disables the",
+                        "shortcut completely and leaves only the item side configuration.")
+                .translation(LANG_PREFIX + ".aeOutput")
+                .define("aeOutput", true);
 
         GLOBAL_EJECT_EVERY_TICK = builder
                 .comment("The same per tick ejection for every Mekanism machine (own machines, the factory",
@@ -222,6 +234,11 @@ public final class CrystalMultiplierConfig {
     /** Push the finished products out of the output slots every tick, our machine only. On by default. */
     public static boolean ejectEveryTick() {
         return boolOr(EJECT_EVERY_TICK, true);
+    }
+
+    /** Push the output slots into an adjacent ME network every tick. On by default. */
+    public static boolean aeOutputEnabled() {
+        return boolOr(AE_OUTPUT, true);
     }
 
     /** The same per tick ejection for every Mekanism machine. Off by default. */

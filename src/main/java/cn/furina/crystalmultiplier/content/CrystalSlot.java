@@ -134,6 +134,23 @@ public class CrystalSlot extends BasicInventorySlot {
         return result;
     }
 
+    /**
+     * Removes up to {@code amount} stored items in one go, without the per-stack extraction cap of
+     * {@link #extractItem(int, Action, AutomationType)}. Used by the AE2 output so a full 4096 item
+     * slot can leave the machine in a single tick.
+     *
+     * @return how many items were actually removed
+     */
+    public int shrinkStored(int amount) {
+        int stored = this.getStoredCount();
+        if (stored <= 0 || amount <= 0) {
+            return 0;
+        }
+        int moved = Math.min(stored, amount);
+        this.write(this.current, stored - moved);
+        return moved;
+    }
+
     @Override
     public void setStack(ItemStack stack) {
         if (stack.isEmpty()) {
