@@ -1,5 +1,6 @@
 package cn.furina.crystalmultiplier.config;
 
+import java.util.ArrayList;
 import java.util.List;
 import net.minecraftforge.common.ForgeConfigSpec;
 
@@ -35,6 +36,9 @@ public final class CrystalMultiplierConfig {
     public static final ForgeConfigSpec.IntValue DEFAULT_CRYSTAL_ENERGY_PER_TICK;
     public static final ForgeConfigSpec.IntValue DEFAULT_CRYSTAL_TICKS;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> RECIPE_OVERRIDES;
+    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> COMPAT_RECIPE_TYPES;
+    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> COMPAT_SKIP_KEYWORDS;
+    public static final ForgeConfigSpec.IntValue COMPAT_TICKS_PER_CYCLE;
     public static final ForgeConfigSpec.BooleanValue DISABLE_AUTO_RECIPES;
     public static final ForgeConfigSpec.IntValue CONFIG_VERSION;
 
@@ -160,6 +164,34 @@ public final class CrystalMultiplierConfig {
                 .translation(LANG_PREFIX + ".recipeOverrides")
                 .defineList("recipeOverrides", List.<String>of(), o -> o instanceof String);
 
+        COMPAT_RECIPE_TYPES = builder
+                .comment("Recipe types from other mods (or data packs) that are mirrored into this machine.",
+                        "Every json recipe of such a type is read at reload time: its output item becomes",
+                        "the seed, energyPerCycle becomes the FE cost and its own \"time\" (falling back to",
+                        "compatTicksPerCycle) the duration, so the cost matches the source machine.",
+                        "Example: \"ae2lt:crystal_catalyzer\" (AE2 Lightning Tech). Point this at any other",
+                        "mod's crystal recipe type and its crystals work without a code change; a data pack",
+                        "that re-defines the same type is picked up the same way.",
+                        "Empty list turns the mirroring off.")
+                .translation(LANG_PREFIX + ".compatRecipeTypes")
+                .defineListAllowEmpty(List.of("compatRecipeTypes"), () -> List.of("ae2lt:crystal_catalyzer"),
+                        o -> o instanceof String);
+
+        COMPAT_SKIP_KEYWORDS = builder
+                .comment("External recipes whose file path contains one of these words are skipped.",
+                        "The default skips the \"dust\" folder of AE2 Lightning Tech: those recipes make",
+                        "crystal dust, not crystals.")
+                .translation(LANG_PREFIX + ".compatSkipKeywords")
+                .defineListAllowEmpty(List.of("compatSkipKeywords"), () -> List.of("dust"),
+                        o -> o instanceof String);
+
+        COMPAT_TICKS_PER_CYCLE = builder
+                .comment("Ticks one mirrored external recipe needs when the source recipe does not state",
+                        "its own processing time. MEAN when the external recipe has no time: the",
+                        "machine applies the tier speed multiplier on top of it.")
+                .translation(LANG_PREFIX + ".compatTicksPerCycle")
+                .defineInRange("compatTicksPerCycle", 20, 1, 1_000_000);
+
         builder.pop();
         SPEC = builder.build();
     }
@@ -253,6 +285,35 @@ public final class CrystalMultiplierConfig {
      * Raw {@code modid:item=energy:ticks} override lines. Never null: an unloaded config yields an
      * empty list, so the recipe generator simply falls back to the defaults.
      */
+    /** Recipe types mirrored from other mods / data packs (never null). */
+    public static List<String> compatRecipeTypes() {
+        return strings(COMPAT_RECIPE_TYPES);
+    }
+
+    /** Path keywords that exclude an external recipe (default: "dust"). */
+    public static List<String> compatSkipKeywords() {
+        return strings(COMPAT_SKIP_KEYWORDS);
+    }
+
+    /** Ticks per mirrored recipe when the source recipe carries no time of its own. */
+    public static int compatTicksPerCycle() {
+        return intOr(COMPAT_TICKS_PER_CYCLE, 20);
+    }
+
+    private static List<String> strings(ForgeConfigSpec.ConfigValue<List<? extends String>> value) {
+        try {
+            List<String> out = new ArrayList<>();
+            for (String entry : value.get()) {
+                if (entry != null && !entry.isBlank()) {
+                    out.add(entry.trim());
+                }
+            }
+            return out;
+        } catch (IllegalStateException e) {
+            return List.of();
+        }
+    }
+
     public static List<String> recipeOverrides() {
         try {
             List<? extends String> value = RECIPE_OVERRIDES.get();

@@ -55,5 +55,11 @@
   "jade.crystal_multiplier.status": "运行: %s   进度: %s%%",
   "crystal_multiplier.gui.ae_output": "AE 输出：%s",
   "crystal_multiplier.gui.ae_output.on": "AE 输出：开（产物直连 ME 网络，不进产物槽）",
-  "crystal_multiplier.gui.ae_output.off": "AE 输出：关（产物进入产物槽）"
+  "crystal_multiplier.gui.ae_output.off": "AE 输出：关（产物进入产物槽）",
+  "crystal_multiplier.configuration.machine.compatRecipeTypes": "要镜像的外部水晶配方类型",
+  "crystal_multiplier.configuration.machine.compatRecipeTypes.tooltip": "列出其他模组或数据包里的配方类型（namespace:type），每条该类型的 JSON 都会被读成一台机器的配方：output 的物品与数量 = 种子与单批产量，energyPerCycle = 每批耗电，time = 既定时长。改成别的模组的水晶配方类型即可自动适配，无需改代码。留空 = 关闭镜像。",
+  "crystal_multiplier.configuration.machine.compatSkipKeywords": "外部配方跳过关键词",
+  "crystal_multiplier.configuration.machine.compatSkipKeywords.tooltip": "文件路径里含这些词的配方会被跳过，默认 dust（闪电科技的粉化配方做的是粉不是水晶）。",
+  "crystal_multiplier.configuration.machine.compatTicksPerCycle": "外部配方默认每批耗时",
+  "crystal_multiplier.configuration.machine.compatTicksPerCycle.tooltip": "被镜像的配方自己没有写 time 时使用的每批 tick 数，之后还会再除以等级速度倍率与 baseSpeedMultiplier。"
 }

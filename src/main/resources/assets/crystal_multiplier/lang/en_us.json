@@ -55,5 +55,11 @@
   "jade.crystal_multiplier.status": "Running: %s   Progress: %s%%",
   "crystal_multiplier.gui.ae_output": "AE output: %s",
   "crystal_multiplier.gui.ae_output.on": "AE output: ON (products go straight into the ME network)",
-  "crystal_multiplier.gui.ae_output.off": "AE output: OFF (products go into the output slots)"
+  "crystal_multiplier.gui.ae_output.off": "AE output: OFF (products go into the output slots)",
+  "crystal_multiplier.configuration.machine.compatRecipeTypes": "External crystal recipe types to mirror",
+  "crystal_multiplier.configuration.machine.compatRecipeTypes.tooltip": "Lists recipe types (namespace:type) of other mods or data packs. Every JSON of that type is read as a recipe for this machine: output item and count become the seed and the batch size, energyPerCycle the FE cost per batch and time the duration when present. Point it at another mod crystal recipe type to support it without a code change. Empty list disables mirroring.",
+  "crystal_multiplier.configuration.machine.compatSkipKeywords": "External recipe skip keywords",
+  "crystal_multiplier.configuration.machine.compatSkipKeywords.tooltip": "External recipes whose file path contains one of these words are skipped. Default dust: the AE2 Lightning Tech dust recipes make powder, not crystals.",
+  "crystal_multiplier.configuration.machine.compatTicksPerCycle": "Default ticks per external recipe",
+  "crystal_multiplier.configuration.machine.compatTicksPerCycle.tooltip": "Ticks one mirrored recipe needs when the source recipe has no time of its own; tier speed and baseSpeedMultiplier still apply on top."
 }

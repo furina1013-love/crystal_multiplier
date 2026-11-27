@@ -42,6 +42,9 @@ public final class CrystalMultiplierConfig {
     public static final ModConfigSpec.IntValue DEFAULT_CRYSTAL_TICKS;
     /** Per item overrides of those numbers, "modid:item=energyPerTick:ticks". */
     public static final ModConfigSpec.ConfigValue<List<? extends String>> RECIPE_OVERRIDES;
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> COMPAT_RECIPE_TYPES;
+    public static final ModConfigSpec.ConfigValue<List<? extends String>> COMPAT_SKIP_KEYWORDS;
+    public static final ModConfigSpec.IntValue COMPAT_TICKS_PER_CYCLE;
     /** Master switch for the whole auto generation (the hand written json recipes stay either way). */
     public static final ModConfigSpec.BooleanValue DISABLE_AUTO_RECIPES;
     /** Format version of this file, reserved for future migrations. */
@@ -169,6 +172,32 @@ public final class CrystalMultiplierConfig {
                 .translation(LANG_PREFIX + ".configVersion")
                 .defineInRange("configVersion", 1, 1, 1_000);
 
+        COMPAT_RECIPE_TYPES = builder
+                .comment("Recipe types from other mods (or data packs) that are mirrored into this machine.",
+                        "Every json recipe of such a type is read at reload time: its output item becomes",
+                        "the seed, energyPerCycle becomes the FE cost and its own time field (falling back to",
+                        "compatTicksPerCycle) the duration, so the cost matches the source machine.",
+                        "Example: ae2lt:crystal_catalyzer (AE2 Lightning Tech). Point this at any other",
+                        "mod's crystal recipe type and its crystals work without a code change; a data pack",
+                        "that re-defines the same type is picked up the same way. Empty list turns it off.")
+                .translation(LANG_PREFIX + ".compatRecipeTypes")
+                .defineListAllowEmpty("compatRecipeTypes", List.of("ae2lt:crystal_catalyzer"),
+                        entry -> entry instanceof String);
+
+        COMPAT_SKIP_KEYWORDS = builder
+                .comment("External recipes whose file path contains one of these words are skipped.",
+                        "The default skips the dust folder of AE2 Lightning Tech: those recipes make",
+                        "crystal dust, not crystals.")
+                .translation(LANG_PREFIX + ".compatSkipKeywords")
+                .defineListAllowEmpty("compatSkipKeywords", List.of("dust"),
+                        entry -> entry instanceof String);
+
+        COMPAT_TICKS_PER_CYCLE = builder
+                .comment("Ticks one mirrored external recipe needs when the source recipe does not state",
+                        "its own processing time.")
+                .translation(LANG_PREFIX + ".compatTicksPerCycle")
+                .defineInRange("compatTicksPerCycle", 20, 1, 1_000_000);
+
         builder.pop();
         SPEC = builder.build();
     }
@@ -256,6 +285,35 @@ public final class CrystalMultiplierConfig {
     /** Format version of the config file; see the comment of the option itself. */
     public static int configVersion() {
         return intOr(CONFIG_VERSION, 1);
+    }
+
+    /** Recipe types mirrored from other mods / data packs (never null). */
+    public static List<String> compatRecipeTypes() {
+        return strings(COMPAT_RECIPE_TYPES);
+    }
+
+    /** Path keywords that exclude an external recipe (default: "dust"). */
+    public static List<String> compatSkipKeywords() {
+        return strings(COMPAT_SKIP_KEYWORDS);
+    }
+
+    /** Ticks per mirrored recipe when the source recipe carries no time of its own. */
+    public static int compatTicksPerCycle() {
+        return intOr(COMPAT_TICKS_PER_CYCLE, 20);
+    }
+
+    private static List<String> strings(ModConfigSpec.ConfigValue<List<? extends String>> value) {
+        try {
+            List<String> out = new ArrayList<>();
+            for (String entry : value.get()) {
+                if (entry != null && !entry.isBlank()) {
+                    out.add(entry.trim());
+                }
+            }
+            return out;
+        } catch (IllegalStateException e) {
+            return List.of();
+        }
     }
 
     /**

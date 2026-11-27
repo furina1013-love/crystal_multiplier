@@ -4,12 +4,16 @@ import cn.furina.crystalmultiplier.CrystalMultiplierMod;
 import cn.furina.crystalmultiplier.config.CrystalMultiplierConfig;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.Collection;
 import java.util.List;
 import net.minecraft.resources.ResourceKey;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.core.registries.Registries;
@@ -130,7 +134,7 @@ public final class AutoCrystalRecipes extends SimplePreparableReloadListener<Voi
         // Resolved once per reload, so editing the config + /reload is enough to see a new value.
         Map<ResourceLocation, Numbers> overrides = parseOverrides();
         // 闪电科技（AE2LT）的水晶催化器配方：能量/时间/产量按它的数值来。
-        Map<ResourceLocation, int[]> catalyzer = readCatalyzerRecipes(resourceManager);
+        Map<ResourceLocation, int[]> external = readExternalRecipes(resourceManager);
         Numbers defaults = new Numbers(CrystalMultiplierConfig.defaultCrystalEnergyPerTick(),
                 CrystalMultiplierConfig.defaultCrystalTicks());
         int crystalsPerParallel = Math.max(1, CrystalMultiplierConfig.crystalsPerParallel());
@@ -201,7 +205,7 @@ public final class AutoCrystalRecipes extends SimplePreparableReloadListener<Voi
             if (this.recipeManager.byKey(recipeId).isPresent()) {
                 continue;
             }
-            int[] mirrored = catalyzer.get(itemId);
+            int[] mirrored = external.get(itemId);
             Numbers numbers = overrides.getOrDefault(itemId,
                     mirrored != null ? new Numbers(mirrored[0], mirrored[1]) : defaults);
             int resultCount = mirrored != null ? mirrored[2] : RESULT_COUNT;
@@ -211,7 +215,7 @@ public final class AutoCrystalRecipes extends SimplePreparableReloadListener<Voi
             added++;
         }
         // 闪电科技里名字不带 crystal 的产物（数据包自定义的水晶之类）也补上。
-        for (Map.Entry<ResourceLocation, int[]> entry : catalyzer.entrySet()) {
+        for (Map.Entry<ResourceLocation, int[]> entry : external.entrySet()) {
             Item item = BuiltInRegistries.ITEM.getOptional(entry.getKey()).orElse(null);
             if (item == null || item == Items.AIR || !covered.add(item)) {
                 continue;
@@ -235,46 +239,132 @@ public final class AutoCrystalRecipes extends SimplePreparableReloadListener<Voi
 
 
     /**
-     * Reads the crystal catalyser recipes of "AE2 Lightning Tech" ({@code ae2lt}) and turns them into
-     * numbers this machine can use, so the crystals that mod adds cost the same here as they do there.
+     * Mirrors crystal recipes that other mods - or data packs - define in their own recipe type.
      *
-     * <p>Their machine takes a crystal block as a catalyst (never consumed), a fluid, FE and one bolt
-     * of lightning, and produces the matching crystal in one second. This machine has no fluid and no
-     * lightning, so only the FE part of the cost is carried over: one second per batch and
-     * {@code energyPerCycle / 20} FE per tick. Recipes from the {@code dust/} folder are skipped.</p>
+     * <p>Nothing here is bound to one mod id: the list of mirrored types and the skip words are config
+     * options ({@code compatRecipeTypes}, {@code compatSkipKeywords}), so a fork of a known mod, or a
+     * pack that re-defines the same recipe type, is picked up exactly the same way. For every matching
+     * json the output item becomes the seed, {@code energyPerCycle} the FE cost, the recipe's own
+     * {@code time} (falling back to {@code compatTicksPerCycle}) the duration and {@code output.count}
+     * the batch size, so the numbers follow the source machine instead of a hard-coded table.</p>
+     *
+     * <p>Recipes whose items do not exist are skipped without noise, which is also how the "only when
+     * that mod is installed" behaviour of the source mod's conditional recipes is reproduced.</p>
      *
      * @return output item id -> {@code {energyPerTick, ticks, amount}}
      */
-    private static Map<ResourceLocation, int[]> readCatalyzerRecipes(ResourceManager resourceManager) {
-        if (!ModList.get().isLoaded(CATALYZER_MODID)) {
+    private static Map<ResourceLocation, int[]> readExternalRecipes(ResourceManager resourceManager) {
+        List<String> configuredTypes = CrystalMultiplierConfig.compatRecipeTypes();
+        if (configuredTypes.isEmpty()) {
             return Map.of();
         }
-        Map<ResourceLocation, int[]> result = new HashMap<>();
-        Map<ResourceLocation, ?> files = resourceManager.listResources(CATALYZER_RECIPE_DIR,
-                path -> path.getPath().endsWith(".json"));
-        for (ResourceLocation file : files.keySet()) {
-            if (file.getPath().contains("/dust/")) {
+        Set<String> wantedTypes = new LinkedHashSet<>();
+        Set<String> folders = new LinkedHashSet<>();
+        for (String raw : configuredTypes) {
+            ResourceLocation id = ResourceLocation.tryParse(raw);
+            if (id == null) {
+                LOGGER.warn("Ignoring compatRecipeTypes entry \"{}\" (expected \"namespace:type\")", raw);
                 continue;
             }
-            try (var reader = resourceManager.getResource(file).orElseThrow().openAsReader()) {
-                com.google.gson.JsonObject root =
-                        com.google.gson.JsonParser.parseReader(reader).getAsJsonObject();
-                if (!root.has("output")) {
+            wantedTypes.add(id.toString());
+            folders.add("recipes/" + id.getPath());
+        }
+        if (folders.isEmpty()) {
+            return Map.of();
+        }
+        List<String> skipWords = CrystalMultiplierConfig.compatSkipKeywords();
+        int defaultTicks = Math.max(1, CrystalMultiplierConfig.compatTicksPerCycle());
+        Map<ResourceLocation, int[]> result = new LinkedHashMap<>();
+        for (String folder : folders) {
+            Map<ResourceLocation, ?> files = resourceManager.listResources(folder,
+                    path -> path.getPath().endsWith(".json"));
+            for (ResourceLocation file : files.keySet()) {
+                if (matchesAny(file.getPath(), skipWords)) {
                     continue;
                 }
-                com.google.gson.JsonObject output = root.getAsJsonObject("output");
-                ResourceLocation outputId = ResourceLocation.tryParse(output.get("id").getAsString());
-                if (outputId == null || result.containsKey(outputId)) {
-                    continue;
+                try (var reader = resourceManager.getResource(file).orElseThrow().openAsReader()) {
+                    JsonObject root = JsonParser.parseReader(reader).getAsJsonObject();
+                    if (!root.has("type") || !isMirroredType(root.get("type").getAsString(), wantedTypes)) {
+                        continue;
+                    }
+                    ResourceLocation outputId = outputId(root);
+                    if (outputId == null || result.containsKey(outputId)) {
+                        continue;
+                    }
+                    int ticks = ownTicks(root, defaultTicks);
+                    result.put(outputId, new int[]{Math.max(1, ownEnergy(root) / ticks), ticks, outputCount(root)});
+                } catch (RuntimeException | java.io.IOException e) {
+                    LOGGER.debug("Skipping unreadable external recipe {}", file, e);
                 }
-                int count = output.has("count") ? Math.max(1, output.get("count").getAsInt()) : 1;
-                int energyPerCycle = root.has("energyPerCycle") ? root.get("energyPerCycle").getAsInt() : 100_000;
-                result.put(outputId, new int[]{Math.max(1, energyPerCycle / CATALYZER_TICKS), CATALYZER_TICKS, count});
-            } catch (RuntimeException | java.io.IOException e) {
-                LOGGER.debug("Skipping unreadable catalyser recipe {}", file, e);
             }
         }
+        if (!result.isEmpty()) {
+            LOGGER.info("Mirrored {} external crystal recipe(s) from {}", result.size(), wantedTypes);
+        }
         return result;
+    }
+
+    /** True when the recipe type is one of the configured ones (a fork keeping the same path is fine). */
+    private static boolean isMirroredType(String type, Set<String> wantedTypes) {
+        if (wantedTypes.contains(type)) {
+            return true;
+        }
+        int colon = type.indexOf(':');
+        String typePath = colon < 0 ? type : type.substring(colon + 1);
+        for (String wanted : wantedTypes) {
+            int wantedColon = wanted.indexOf(':');
+            if (wanted.substring(wantedColon + 1).equals(typePath)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean matchesAny(String path, List<String> words) {
+        for (String word : words) {
+            if (!word.isEmpty() && path.contains(word)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Output id of an external recipe ({@code {id,count}} or {@code {item,count}}). */
+    @Nullable
+    private static ResourceLocation outputId(JsonObject root) {
+        if (!root.has("output") || !root.get("output").isJsonObject()) {
+            return null;
+        }
+        JsonObject output = root.getAsJsonObject("output");
+        String key = output.has("id") ? "id" : output.has("item") ? "item" : null;
+        return key == null ? null : ResourceLocation.tryParse(output.get(key).getAsString());
+    }
+
+    private static int outputCount(JsonObject root) {
+        JsonObject output = root.getAsJsonObject("output");
+        return output != null && output.has("count") ? Math.max(1, output.get("count").getAsInt()) : 1;
+    }
+
+    /** The source recipe's own processing time in ticks, when it states one. */
+    private static int ownTicks(JsonObject root, int fallback) {
+        for (String key : new String[]{"time", "duration", "processingTime"}) {
+            if (root.has(key) && root.get(key).isJsonPrimitive() && root.get(key).getAsJsonPrimitive().isNumber()) {
+                return Math.max(1, root.get(key).getAsInt());
+            }
+        }
+        return fallback;
+    }
+
+    private static int ownEnergy(JsonObject root) {
+        for (String key : new String[]{"energyPerCycle", "energy", "totalEnergy"}) {
+            if (root.has(key) && root.get(key).isJsonPrimitive() && root.get(key).getAsJsonPrimitive().isNumber()) {
+                int value = root.get(key).getAsInt();
+                if (value > 0) {
+                    return value;
+                }
+            }
+        }
+        return 100_000;
     }
 
     /** One parsed {@code recipeOverrides} line: which item and the two numbers it should use. */
