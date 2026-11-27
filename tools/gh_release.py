@@ -16,7 +16,7 @@ if not VER:
     raise SystemExit('用法: tools/gh_release.py <version>')
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-TOKEN_FILE = os.environ.get('GH_TOKEN_FILE', '/root/java-mod-dev/_private/githubtoken.txt')
+TOKEN_FILE = os.environ.get('GH_TOKEN_FILE', '/root/java-mod-dev/_private/tokens/githubtoken.txt')
 REPO = os.environ.get('GH_REPO', 'furina1013-love/crystal_multiplier')
 DIST = os.path.join(ROOT, 'dist')
 TAG = 'v' + VER

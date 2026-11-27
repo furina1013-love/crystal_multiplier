@@ -7,7 +7,7 @@ VER="$1"
 if [ -z "$VER" ]; then echo "用法: tools/release_both.sh <version>"; exit 1; fi
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OTHER="${CM_1211_DIR:-/root/java-mod-dev/crystal_multiplier_1211}"
-TOKEN_FILE="${GH_TOKEN_FILE:-/root/java-mod-dev/_private/githubtoken.txt}"
+TOKEN_FILE="${GH_TOKEN_FILE:-/root/java-mod-dev/_private/tokens/githubtoken.txt}"
 REPO="${GH_REPO:-furina1013-love/crystal_multiplier}"
 INIT="${CM_GRADLE_INIT:-/tmp/init-mirror.gradle}"
 
